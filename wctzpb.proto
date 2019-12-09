@@ -1,0 +1,75 @@
+// -*- c++ -*- // ish
+
+// A protocol buffer descriptin of Wire-Cell Toolkit IData classes.
+
+// conventions:
+// - use same name as interface class minus the "I".
+// - all message classes in this one .proto
+// - 
+
+syntax = "proto3";
+package wirecell.zpb.data;
+
+import "google/protobuf/any.proto";
+
+
+// What is sent/recv'ed
+message Payload {
+  // One of the messages below.
+  repeated google.protobuf.Any details = 1;
+}
+
+message Point {
+  float x = 1;
+  float y = 2;
+  float z = 3;
+}
+
+message Depo {
+  /// Uniquely identify this depo in some context.  If in a depo set
+  /// this is the index.
+  uint64 ident = 1;
+
+  /// The location of the deposition.
+  Point pos = 2;
+
+  /// The number of seconds from some absolute start time to when the
+  /// deposition occurred.
+  double time = 3;
+
+  /// The number charge (in units of number of electrons) deposited.
+  double charge = 4;
+
+  /// The energy (in units of MeV) deposited.
+  double energy = 5;
+
+  /// Track ID eg from Geant4 which produced this depo directly or indirectly
+  uint32 trackid = 6;
+
+  /// PDG code of that track ID
+  uint32 pdg = 7;
+        
+  /// If the deposition is drifted, this may allow access to the
+  /// original and refers to an ident.
+  uint64 prior = 8;
+
+  /// Any (half width) extent in the longitudinal (drift)
+  /// direction (distance).  The distribution is implicit but
+  /// typically it is taken that this is a Gaussian sigma.
+  double extent_long = 9;
+
+  /// Any (half width) extent in the transverse (pitch)
+  /// direction (distance).  The distribution is implicit but
+  /// typically it is taken that this is a Gaussian sigma.
+  double extent_tran = 10;
+  
+}
+
+
+message DepoSet {
+  // A unique identifier for this set.
+  uint32 ident = 1;
+
+  // The depos in the set.
+  repeated Depo depos = 2;
+}

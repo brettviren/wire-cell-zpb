@@ -1,0 +1,3 @@
+# -*- python -*-
+bld.smplpkg('WireCellZpb', use='WireCellIface WireCellUtil ZIO ZMQ CZMQ ZYRE PROTOBUF')
+# pb = bld.path.find_resource("wct.proto")
