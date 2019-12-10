@@ -16,7 +16,7 @@ import "google/protobuf/any.proto";
 // What is sent/recv'ed
 message Payload {
   // One of the messages below.
-  repeated google.protobuf.Any details = 1;
+  repeated google.protobuf.Any objects = 1;
 }
 
 message Point {
