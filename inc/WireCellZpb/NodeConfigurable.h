@@ -1,6 +1,9 @@
 /**
+
    NodeConfigurable : a mix-in class for all ZPB components which have
-   a ZIO node.
+   a ZIO node.  This takes care of the brunt of configuration.  The
+   "real" component class should inherit from this as well as a graph
+   component interface.
 
  */
 
@@ -22,31 +25,54 @@ namespace WireCell {
         
         class NodeConfigurable : public WireCell::IConfigurable {
         public:
-            NodeConfigurable(const std::string& wct_type, // ie, as in WIRECELL_FACTORY
-                             const std::string& default_name = "",
-                             zio::level::MessageLevel default_level = zio::level::info);
+
+            /// Sub class must provide configuration:
+            struct node_config_t {
+                // The WCT component type name (ie, what is given to
+                // WIRECELL_FACTORY macro).
+                std::string wct_type; 
+                // A default node nick name, user config may override
+                std::string nick;
+                // Must provide a map from allowed port names to a
+                // default ZMQ socket type number, which also marks it
+                // as being "input" or "output".
+                std::map<std::string, int> ports; 
+                // Leave as zero to generate "random" origin number
+                zio::origin_t origin{0}; 
+                // Extra node headers may be provided.  WCT-Type is
+                // constructed by this class.
+                zio::headerset_t headers{};
+                // Default level for output ports.
+                zio::level::MessageLevel level{zio::level::info};
+            };
+
+            NodeConfigurable(const node_config_t& mycfg);
             virtual ~NodeConfigurable();
 
             /// IConfigurable
-            virtual void configure(const WireCell::Configuration& config);
             virtual WireCell::Configuration default_configuration() const;
+            virtual void configure(const WireCell::Configuration& config);
             
-            // message sending/receiving
+            bool selftest();
+
+        protected:
+
+            // ZIO message sending/receiving
             bool send_eos(zio::portptr_t port);
             bool send(zio::portptr_t port, ::google::protobuf::Message& msg);
             bool recv(zio::portptr_t port, ::google::protobuf::Message& msg);
             bool recv(zio::portptr_t port, ::google::protobuf::Message& msg, bool& is_eos);
 
-        protected:
 
-            // subclass may override this (and possibly still call it)
-            virtual void online();
+            /// Subclass may override in order to perform any
+            /// validation or other operation just before we go
+            /// online.
+            virtual bool validate() { return true; }
+            void online();
+
 
             zio::Node m_node;
-            std::string m_wct_type;
-            std::unordered_map<std::string, zio::portptr_t> m_ports;
-            zio::headerset_t m_headers;
-            zio::level::MessageLevel m_level;
+            node_config_t m_nc;
             Log::logptr_t l;                
         };
     }

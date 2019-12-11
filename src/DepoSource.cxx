@@ -6,8 +6,13 @@ WIRECELL_FACTORY(ZpbDepoSource, WireCell::Zpb::DepoSource,
 
 using namespace WireCell;
 
+const std::string PORTNAME = "input";
+
 Zpb::DepoSource::DepoSource()
-    : NodeConfigurable("ZpbDepoSource", "wct-zpb-deposource")
+    : NodeConfigurable(NodeConfigurable::node_config_t{
+            "ZpbDepoSource",
+            "wct-zpb-depo-source",
+            {{PORTNAME,ZMQ_SUB}}})
 {
 }
 
@@ -15,16 +20,10 @@ Zpb::DepoSource::~DepoSource()
 {
 }
 
-void Zpb::DepoSource::online()
+bool Zpb::DepoSource::validate()
 {
-    const auto& portnames = m_node.portnames();
-    if (portnames.size() != 1) {
-        l->critical("{}: unexpected number of ports: {}",
-                    m_node.nick(), portnames.size());
-        THROW(ValueError() << errmsg{"unexpected number of ports"});
-    }
-    m_port = m_node.port(portnames[0]);
-    this->NodeConfigurable::online();
+    m_port = m_node.port(PORTNAME);
+    return m_port != nullptr;
 }
 
 bool Zpb::DepoSource::operator()(IDepo::pointer& depo)

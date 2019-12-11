@@ -3,14 +3,15 @@
 
 using namespace WireCell;
 
-Zpb::NodeConfigurable::NodeConfigurable(const std::string& wct_type,
-                                        const std::string& default_name,
-                                        zio::level::MessageLevel default_level)
-    : m_node(default_name, (uint64_t)this)
-    , m_wct_type(wct_type)
-    , m_level(default_level)
+Zpb::NodeConfigurable::NodeConfigurable(const node_config_t& nc)
+    : m_node(nc.nick)
+    , m_nc(nc)
     , l(Log::logger("zpb"))
 {
+    if (!m_nc.origin) {
+        m_nc.origin = (uint64_t)this;
+        m_node.set_origin(m_nc.origin);
+    }
 }
 
 Zpb::NodeConfigurable::~NodeConfigurable()
@@ -18,59 +19,73 @@ Zpb::NodeConfigurable::~NodeConfigurable()
     m_node.offline();
 }
 
-WireCell::Configuration Zpb::NodeConfigurable::default_configuration() const
+static
+WireCell::Configuration jsonify(const Zpb::NodeConfigurable::node_config_t& nc)
 {
+    /// JsonCPP doesn't support initializer lists so we exaustively make this....
     Configuration cfg;
-    cfg["node"] = m_node.nick();
-    cfg["origin"] = (Json::UInt64) m_node.origin();
+    cfg["nick"] = nc.nick;
+    cfg["origin"] = (Json::UInt64)nc.origin;
+    cfg["level"] = (int)nc.level;
     cfg["ports"] = Json::objectValue;
-    // {name: "portname",
-    //   binds: ["", "tcp://127.0.0.1:5678"], // examples, can omit both binds+connects
-    //   connects: ["tcp://127.0.0.1:5678", {nodename:"nodenick",portname:"spigot"}]
-    //   stype: "pub" (or "PUB")
-    //  },...]
-    cfg["level"] = (int)m_level;
-    // any extra headers to advertise.
-    cfg["headers"] = Json::objectValue;
+    for (const auto& pp : nc.ports) {
+        cfg["ports"][pp.first]["stype"] = pp.second;
+    }
+    cfg["headers"] = Json::objectValue; // keys may be duplicate
+    for (const auto& hh : nc.headers) {
+        Configuration jhh = Json::arrayValue;
+        jhh[0] = hh.first;
+        jhh[1] = hh.second;
+        cfg["headers"].append(jhh);
+    }
     return cfg;
 }
 
+WireCell::Configuration Zpb::NodeConfigurable::default_configuration() const
+{
+    return jsonify(m_nc);
+}
+
+static int compatible_stype(int def, const Configuration& cfg)
+{
+    if (cfg.empty()) return def;
+    const int want = cfg.asInt();
+    if (def == want) { return want; }
+    if ((def  == ZMQ_PUB or def  == ZMQ_PUSH) and
+        (want == ZMQ_PUB or want == ZMQ_PUSH)) {
+        return want;
+    }
+    if ((def  == ZMQ_SUB or def  == ZMQ_PULL) and
+        (want == ZMQ_SUB or want == ZMQ_PULL)) {
+        return want;
+    }
+    return -1;
+}
 
 void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
 {
-    m_node.set_nick(get<std::string>(cfg, "node", m_node.nick()));
-    m_node.set_origin(get<Json::UInt64>(cfg, "origin", (Json::UInt64)m_node.origin()));
-    m_level = (zio::level::MessageLevel)get<int>(cfg, "level", (int)m_level);
+    m_nc.nick = get<std::string>(cfg, "node", m_nc.nick);
+    m_node.set_nick(m_nc.nick);
+    m_nc.origin = get<Json::UInt64>(cfg, "origin", (Json::UInt64)m_nc.origin);
+    m_node.set_origin(m_nc.origin);
+    m_nc.level = (zio::level::MessageLevel)get<int>(cfg, "level", (int)m_nc.level);
 
-    const std::map<std::string, int> zstmap = {
-        {"pub",ZMQ_PUB},
-        {"sub",ZMQ_SUB},
-        {"push",ZMQ_PUSH},
-        {"pull",ZMQ_PULL},
-    };
-
-    if (cfg["ports"].empty()) {
-        l->warn("node {}: no ports defined");
-    }
-    for (auto name : cfg["ports"].getMemberNames()) {
-        auto body = cfg["ports"][name];
-
-        if (name.empty()) {
-            l->warn("node {}: request for unnamed port", m_node.nick());
+    for (auto pp : m_nc.ports) {
+        const std::string pname = pp.first;
+        auto jport = cfg["ports"][pname];
+        if (jport.empty()) {
+            l->critical("node {}: no configuration for port {}", m_nc.nick, pname);
+            THROW(ValueError() << errmsg{"missing port configuration"});
+        }
+        int stype = compatible_stype(pp.second, jport["stype"]);
+        if (stype < 0) {
+            l->critical("node {}: bad socket type for port {}", m_nc.nick, pname);
+            THROW(ValueError() << errmsg{"bad socket type"});
         }
 
-        std::string tmp = get<std::string>(body, "stype", "pub");
-        std::transform(tmp.begin(), tmp.end(), tmp.begin(), ::tolower);
-        auto maybe = zstmap.find(tmp);
-        if (maybe == zstmap.end()) {
-            l->critical("node {}: unknown socket type: {}", m_node.nick(), tmp);
-            THROW(ValueError() << errmsg{"unknown socket type"});
-        }
-        int stype = maybe->second;
+        auto port = m_node.port(pname, stype);
 
-        auto port = m_node.port(name, stype);
-        
-        auto binds = body["binds"];
+        auto binds = jport["binds"];
         if (!binds.empty()) {
             for (auto bind : binds) {
                 if (bind.isNull() or bind.size() == 0) {
@@ -87,7 +102,7 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
                 }
             }
         }
-        auto connects = body["connects"];
+        auto connects = jport["connects"];
         if (!connects.empty()) {
             for (auto conn : connects) {
                 if (conn.isString()) {
@@ -103,12 +118,13 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
         if (binds.empty() and connects.empty()) {
             port->bind();       // default: ephemeral bind
         }
+
     }
 
-    m_headers = {{"WCT-Type",m_wct_type}};
+    m_nc.headers.push_back(zio::header_t("WCT-Type",m_nc.wct_type));
     for (auto key : cfg["headers"].getMemberNames()) {
         auto val = cfg["headers"][key];
-        m_headers.push_back(zio::header_t(key,val.asString()));
+        m_nc.headers.push_back(zio::header_t(key,val.asString()));
     }
 
 
@@ -116,12 +132,15 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
 }
 
 
+
 void Zpb::NodeConfigurable::online()
 {
-    // subclass may override this method, and then probably should
-    // call it explicitly.  Override to do any implementation-specific
-    // sanity checking on the m_node.
-    m_node.online(m_headers);
+    bool ok = validate();
+    if (!ok) {
+        l->critical("node {}: validation failed", m_nc.nick);
+        THROW(ValueError() << errmsg{"validation failed"});
+    }
+    m_node.online(m_nc.headers);
 }
 
 bool Zpb::NodeConfigurable::send_eos(zio::portptr_t port)
@@ -138,7 +157,7 @@ bool Zpb::NodeConfigurable::send(zio::portptr_t port, ::google::protobuf::Messag
     auto any = pl.add_objects();
     any->PackFrom(msg);
 
-    port->send(m_level, convert.format(), convert(pl),
+    port->send(m_nc.level, convert.format(), convert(pl),
                msg.GetTypeName());
     return true;
 }
@@ -173,5 +192,11 @@ bool Zpb::NodeConfigurable::recv(zio::portptr_t port, ::google::protobuf::Messag
         l->warn("{}: too many payloads: {} (want 1)", m_node.nick(), npls);
     }
     pl.objects(0).UnpackTo(&msg);
+    return true;
+}
+
+
+bool Zpb::NodeConfigurable::selftest()
+{
     return true;
 }

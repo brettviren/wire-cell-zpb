@@ -14,9 +14,12 @@ namespace WireCell {
 
             virtual bool operator()(const IDepo::pointer& depo);
 
+            virtual WireCell::Configuration default_configuration() const;
+
         private:
 
-            virtual void online() override;
+
+            virtual bool validate() override;
 
             zio::portptr_t m_port;
         };

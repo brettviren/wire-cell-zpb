@@ -16,7 +16,7 @@ namespace WireCell {
 
         private:
 
-            virtual void online() override;
+            virtual bool validate() override;
 
             zio::portptr_t m_port;
 
