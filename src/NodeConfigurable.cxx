@@ -1,6 +1,9 @@
 #include "WireCellZpb/NodeConfigurable.h"
 #include "WireCellUtil/Exceptions.h"
 
+#include "wctzpb.pb.h"
+
+
 using namespace WireCell;
 
 Zpb::NodeConfigurable::NodeConfigurable(const node_config_t& nc)
@@ -70,6 +73,12 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
     m_node.set_origin(m_nc.origin);
     m_nc.level = (zio::level::MessageLevel)get<int>(cfg, "level", (int)m_nc.level);
 
+    int verbose = 0;
+    if (! cfg["verbose"].empty()) {
+        verbose = cfg["verbose"].asInt();
+        m_node.set_verbose(verbose);
+    }
+
     for (auto pp : m_nc.ports) {
         const std::string pname = pp.first;
         auto jport = cfg["ports"][pname];
@@ -86,30 +95,36 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
         auto port = m_node.port(pname, stype);
 
         auto binds = jport["binds"];
-        if (!binds.empty()) {
+        if (!binds.empty() and binds.size() > 0) {
             for (auto bind : binds) {
                 if (bind.isNull() or bind.size() == 0) {
+                    l->info("node {}: bind to ephemeral", m_nc.nick);
                     port->bind();
                     continue;
                 }
                 if (bind.isString()) {
+                    l->info("node {}: bind to {}", m_nc.nick, bind);
                     port->bind(bind.asString());
                     continue;
                 }
                 if (bind.isObject()) {
+                    l->info("node {}: bind to {}", m_nc.nick, bind);
                     port->bind(bind["host"].asString(), bind["tcpportnum"].asInt());
                     continue;
                 }
             }
         }
         auto connects = jport["connects"];
+        //l->info("node {}: connects: {}", m_nc.nick, connects);
         if (!connects.empty()) {
             for (auto conn : connects) {
                 if (conn.isString()) {
+                    l->info("node {}: connect to {}", m_nc.nick, conn);
                     port->connect(conn.asString());
                     continue;
                 }
                 if (conn.isObject()) {
+                    l->info("node {}: connect to {}", m_nc.nick, conn);
                     port->connect(conn["nodename"].asString(), conn["portname"].asString());
                     continue;
                 }
@@ -141,28 +156,43 @@ void Zpb::NodeConfigurable::online()
         THROW(ValueError() << errmsg{"validation failed"});
     }
     m_node.online(m_nc.headers);
+    l->debug("{}: online with extra headers:", m_node.nick());
+    for (const auto& hh : m_nc.headers) {
+        l->debug("\t{} = {}", hh.first, hh.second);
+    }
 }
 
-bool Zpb::NodeConfigurable::send_eos(zio::portptr_t port)
+bool Zpb::NodeConfigurable::send_eos(zio::portptr_t port, ::google::protobuf::Message& msg)
 {
+    const std::string orig_type_name = msg.GetTypeName();
+    l->debug("{}: send EOS {} on port {}", m_node.nick(), orig_type_name,
+             port->name());
+    zio::converter::pbuf_t<wirecell::zpb::data::Payload> convert;
     wirecell::zpb::data::Payload pl;
-    send(port, pl);
+    port->send(m_nc.level, convert.format(), convert(pl),
+               orig_type_name);
     return true;
 }
 
 bool Zpb::NodeConfigurable::send(zio::portptr_t port, ::google::protobuf::Message& msg)
 {
+    const std::string orig_type_name = msg.GetTypeName();
+    l->debug("{}: send {} on port {}", m_node.nick(), orig_type_name, port->name());
+
     zio::converter::pbuf_t<wirecell::zpb::data::Payload> convert;
     wirecell::zpb::data::Payload pl;
     auto any = pl.add_objects();
     any->PackFrom(msg);
 
     port->send(m_nc.level, convert.format(), convert(pl),
-               msg.GetTypeName());
+               orig_type_name);
     return true;
 }
 bool Zpb::NodeConfigurable::recv(zio::portptr_t port, ::google::protobuf::Message& msg, bool& is_eos)
 {
+    const std::string want_type_name = msg.GetTypeName();
+    l->debug("{}: recv {} on port {}", m_node.nick(), want_type_name, port->name());
+
     is_eos = false;
     zio::Header hdr;
     zio::byte_array_t buf;
@@ -173,12 +203,8 @@ bool Zpb::NodeConfigurable::recv(zio::portptr_t port, ::google::protobuf::Messag
         return false;
     }
     if (hdr.format != "PBUF") {
-        l->error("{}: receive unwanted type: {} (want PBUF)", m_node.nick(), hdr.format);
+        l->error("{}: receive unwanted ZIO type: {} (want PBUF)", m_node.nick(), hdr.format);
         return false;
-    }
-    if (hdr.label != msg.GetTypeName()) {
-        l->error("{}: receive unwanted type: {} (want {})",
-                 m_node.nick(), hdr.label, msg.GetTypeName());
     }
     zio::converter::pbuf_t<wirecell::zpb::data::Payload> convert;
     wirecell::zpb::data::Payload pl = convert(buf);
@@ -187,11 +213,23 @@ bool Zpb::NodeConfigurable::recv(zio::portptr_t port, ::google::protobuf::Messag
         is_eos = true;
         return true;
     }
-
     if (npls > 1) {
         l->warn("{}: too many payloads: {} (want 1)", m_node.nick(), npls);
     }
+
+    l->debug("{}: payload size: {}, header label: {}, want type: {}, got type: {}", 
+             m_node.nick(), npls, hdr.label, want_type_name, pl.objects(0).GetTypeName());
+
+    // Do this check after size check as EOS gets sent as an empty payload.
+    if (hdr.label != want_type_name) {
+        l->error("{}: receive unwanted PB type: {} (want {})",
+                 m_node.nick(), hdr.label, want_type_name);
+        return false;
+    }
+
+
     pl.objects(0).UnpackTo(&msg);
+
     return true;
 }
 

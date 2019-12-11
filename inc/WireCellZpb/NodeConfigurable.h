@@ -15,7 +15,7 @@
 #include "zio/node.hpp"
 #include "zio/types.hpp"
 
-#include "wctzpb.pb.h"
+#include "google/protobuf/message.h"
 
 #include <unordered_map>
 
@@ -58,7 +58,7 @@ namespace WireCell {
         protected:
 
             // ZIO message sending/receiving
-            bool send_eos(zio::portptr_t port);
+            bool send_eos(zio::portptr_t port, ::google::protobuf::Message& msg);
             bool send(zio::portptr_t port, ::google::protobuf::Message& msg);
             bool recv(zio::portptr_t port, ::google::protobuf::Message& msg);
             bool recv(zio::portptr_t port, ::google::protobuf::Message& msg, bool& is_eos);

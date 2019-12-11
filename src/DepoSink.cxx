@@ -1,6 +1,8 @@
 #include "WireCellZpb/DepoSink.h"
 #include "WireCellUtil/NamedFactory.h"
 
+#include "wctzpb.pb.h"
+
 WIRECELL_FACTORY(ZpbDepoSink, WireCell::Zpb::DepoSink,
                  WireCell::IDepoSink, WireCell::IConfigurable)
 
@@ -22,11 +24,6 @@ Zpb::DepoSink::~DepoSink()
 {
 }
 
-WireCell::Configuration Zpb::DepoSink::default_configuration() const
-{
-
-}
-
 bool Zpb::DepoSink::validate()
 {
     // cache the port pointer to avoid a lookup each call
@@ -36,11 +33,12 @@ bool Zpb::DepoSink::validate()
 
 bool Zpb::DepoSink::operator()(const IDepo::pointer& depo)
 {
+    wirecell::zpb::data::Depo out;
     if (!depo) {
-        return send_eos(m_port);
+        return send_eos(m_port, out);
     }
 
-    wirecell::zpb::data::Depo out;
+
 
     out.set_ident((uint64_t)depo.get());
     auto* pos = out.mutable_pos();

@@ -14,8 +14,6 @@ namespace WireCell {
 
             virtual bool operator()(const IDepo::pointer& depo);
 
-            virtual WireCell::Configuration default_configuration() const;
-
         private:
 
 
