@@ -33,10 +33,10 @@ int main()
     cerr << "DepoSource config:\n" << ds_cfg << "\n";
 
     us.configure(us_cfg);       // binds
-    ds.configure(ds_cfg);       // configures, waits for us
+    ds.configure(ds_cfg);       // configures, waits for us to be online
 
-    l->debug("sleeping");
-    sleep(1);
+    // l->debug("sleeping");
+    // sleep(1);
 
     l->debug("sending depo1");
 
