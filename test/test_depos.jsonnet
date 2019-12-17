@@ -43,6 +43,7 @@ local zmq = import "zmq.jsonnet";
                 input: {
                     stype: zmq.stype("server"),
                     binds: ["inproc://depo-spigot"],
+                    //binds: ["tcp://127.0.0.1:5678"],                    
                 }
             }
         }
