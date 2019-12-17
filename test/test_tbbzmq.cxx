@@ -91,27 +91,31 @@ int main(int argc, char* argv[])
     // NGENS*[gen -tbb-> t2z] =zmq=> z2t -tbb-> sink
 
 
-    int nthreads = 1;
+    // needs at least 2 threads or will deadlock.
+    int nthreads = 2;
     if (argc > 1) {
         nthreads = atoi(argv[1]);
     }
     int nconcurs = 1;
     if (argc > 2) {
-        nconcurs = atoi(argv[1]);
+        nconcurs = atoi(argv[2]);
     }
-    const char* what = "pubsub";
+    const char* what = "clientserver";
     if (argc > 3) {
         what = argv[3];
     }
 
     zsys_init();
 
+    zsys_info("nthreads: %d, nconcurs: %d, pattern: %s", nthreads, nconcurs, what);
 
-    const char* address = "tcp://127.0.0.1:5678";
 
+    //const char* address = "tcp://127.0.0.1:5678";
+    const char* address = "inproc://test-tbb-zmq";
 
-    int sender_stype = ZMQ_PUB;
-    int recver_stype = ZMQ_SUB;
+    // Note, pubsub and pushpull will likely fail with nthreads > 1
+    int sender_stype = ZMQ_CLIENT;
+    int recver_stype = ZMQ_SERVER;
 
     if (streq(what, "pubsub")) {
         sender_stype = ZMQ_PUB;
@@ -144,7 +148,7 @@ int main(int argc, char* argv[])
         zsock_set_subscribe(recv_sock, "");
     }
     int port = zsock_bind(recv_sock, "%s", address);
-    assert (port == 5678);
+    assert (port >= 0);
     Z2T z2t(recv_sock, 0);
 
 

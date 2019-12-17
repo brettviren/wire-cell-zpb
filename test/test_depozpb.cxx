@@ -22,6 +22,7 @@ int main()
     auto ds_cfg = ds.default_configuration();
 
     us_cfg["ports"]["output"]["stype"] = ZMQ_PUSH;
+    us_cfg["ports"]["output"]["binds"][0] = "inproc://test-depo-zpb";
     ds_cfg["ports"]["input"]["stype"] = ZMQ_PULL;
     ds_cfg["ports"]["input"]["connects"][0]["nodename"] = us_cfg["nick"];
     ds_cfg["ports"]["input"]["connects"][0]["portname"] = "output";

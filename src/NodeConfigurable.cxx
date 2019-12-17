@@ -51,27 +51,37 @@ WireCell::Configuration Zpb::NodeConfigurable::default_configuration() const
 
 static int compatible_stype(int def, const Configuration& cfg)
 {
+    // this is a rather hand-wringing way to use the default socket
+    // type to hint what socket types are allowed to be provided by
+    // configuration.
+
     if (cfg.empty()) return def;
-    const int want = cfg.asInt();
-    if (def == want) { return want; }
-    if ((def  == ZMQ_PUB or def  == ZMQ_PUSH) and
-        (want == ZMQ_PUB or want == ZMQ_PUSH)) {
-        return want;
+    const int got = cfg.asInt();
+    if (def == got) { return got; }
+
+    bool def_sender = def == ZMQ_PUB or def == ZMQ_PUSH or def == ZMQ_RADIO or def == ZMQ_CLIENT;
+    bool def_recver = def == ZMQ_SUB or def == ZMQ_PULL or def == ZMQ_DISH  or def == ZMQ_SERVER;
+
+    bool got_sender = got == ZMQ_PUB or got == ZMQ_PUSH or got == ZMQ_RADIO or got == ZMQ_CLIENT;
+    bool got_recver = got == ZMQ_SUB or got == ZMQ_PULL or got == ZMQ_DISH  or got == ZMQ_SERVER;
+
+    if (def_sender and got_sender) {
+        return got;
     }
-    if ((def  == ZMQ_SUB or def  == ZMQ_PULL) and
-        (want == ZMQ_SUB or want == ZMQ_PULL)) {
-        return want;
+    if (def_recver and got_recver) {
+        return got;
     }
     return -1;
 }
 
 void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
 {
-    m_nc.nick = get<std::string>(cfg, "node", m_nc.nick);
+    m_nc.nick = get<std::string>(cfg, "nick", m_nc.nick);
     m_node.set_nick(m_nc.nick);
     m_nc.origin = get<Json::UInt64>(cfg, "origin", (Json::UInt64)m_nc.origin);
     m_node.set_origin(m_nc.origin);
     m_nc.level = (zio::level::MessageLevel)get<int>(cfg, "level", (int)m_nc.level);
+    l->debug("node {}: origin: {}", m_nc.nick, m_nc.origin);
 
     int verbose = 0;
     if (! cfg["verbose"].empty()) {
@@ -92,12 +102,19 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
             THROW(ValueError() << errmsg{"bad socket type"});
         }
 
+        l->info("node {}: make port {} type {}", m_nc.nick, pname, stype);
         auto port = m_node.port(pname, stype);
 
         auto binds = jport["binds"];
-        if (!binds.empty() and binds.size() > 0) {
+        auto connects = jport["connects"];
+        if (binds.empty() and connects.empty()) {
+            l->info("node {}: no binds/connects, binding to ephemeral", m_nc.nick);
+            port->bind();       // default: ephemeral bind
+        }
+        else {
+            l->debug("node {}: binds: {}", m_nc.nick, binds);
             for (auto bind : binds) {
-                if (bind.isNull() or bind.size() == 0) {
+                if (bind.empty()) {
                     l->info("node {}: bind to ephemeral", m_nc.nick);
                     port->bind();
                     continue;
@@ -113,10 +130,7 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
                     continue;
                 }
             }
-        }
-        auto connects = jport["connects"];
-        //l->info("node {}: connects: {}", m_nc.nick, connects);
-        if (!connects.empty()) {
+            l->debug("node {}: connects: {}", m_nc.nick, connects);
             for (auto conn : connects) {
                 if (conn.isString()) {
                     l->info("node {}: connect to {}", m_nc.nick, conn);
@@ -130,10 +144,6 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
                 }
             }
         }
-        if (binds.empty() and connects.empty()) {
-            port->bind();       // default: ephemeral bind
-        }
-
     }
 
     m_nc.headers.push_back(zio::header_t("WCT-Type",m_nc.wct_type));
@@ -155,11 +165,11 @@ void Zpb::NodeConfigurable::online()
         l->critical("node {}: validation failed", m_nc.nick);
         THROW(ValueError() << errmsg{"validation failed"});
     }
-    m_node.online(m_nc.headers);
-    l->debug("{}: online with extra headers:", m_node.nick());
+    l->debug("{}: going online with extra headers:", m_node.nick());
     for (const auto& hh : m_nc.headers) {
         l->debug("\t{} = {}", hh.first, hh.second);
     }
+    m_node.online(m_nc.headers);
 }
 
 bool Zpb::NodeConfigurable::send_eos(zio::portptr_t port, ::google::protobuf::Message& msg)
