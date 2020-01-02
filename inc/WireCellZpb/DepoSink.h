@@ -4,6 +4,10 @@
 #include "WireCellIface/IDepoSink.h"
 #include "WireCellZpb/NodeConfigurable.h"
 
+#include "zio/flow.hpp"
+
+#include <memory>
+
 namespace WireCell {
     namespace Zpb { 
 
@@ -19,7 +23,9 @@ namespace WireCell {
 
             virtual bool validate() override;
 
-            zio::portptr_t m_port;
+            std::unique_ptr<zio::flow::Flow> m_flow;
+
+            bool m_had_eos{false};
         };
     }
 }

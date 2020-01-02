@@ -13,7 +13,7 @@
 #include "WireCellIface/IConfigurable.h"
 #include "WireCellUtil/Logging.h"
 #include "zio/node.hpp"
-#include "zio/types.hpp"
+
 
 #include "google/protobuf/message.h"
 
@@ -52,28 +52,26 @@ namespace WireCell {
             /// IConfigurable
             virtual WireCell::Configuration default_configuration() const;
             virtual void configure(const WireCell::Configuration& config);
-            
-            bool selftest();
 
         protected:
-
-            // ZIO message sending/receiving
-            bool send_eos(zio::portptr_t port, ::google::protobuf::Message& msg);
-            bool send(zio::portptr_t port, ::google::protobuf::Message& msg);
-            bool recv(zio::portptr_t port, ::google::protobuf::Message& msg);
-            bool recv(zio::portptr_t port, ::google::protobuf::Message& msg, bool& is_eos);
-
 
             /// Subclass may override in order to perform any
             /// validation or other operation just before we go
             /// online.
             virtual bool validate() { return true; }
-            void online();
+
+            /// Pack the PB message into a ZIO payload by wrapping it
+            /// in an "any" held by WCT's proto "Payload" object
+            zio::message_t pack(::google::protobuf::Message& pbmsg);
 
 
             zio::Node m_node;
             node_config_t m_nc;
             Log::logptr_t l;                
+            int m_timeout;      // a timeout to use when recv'ing
+
+        private:
+            void online();            
         };
     }
 }

@@ -54,18 +54,11 @@ attempts to answer them.
 
 * How ZPB works
 
-The Z stands for [[https://github.com/brettviren/zio][ZIO]] which takes its Z from ZeroMQ.  The PB stands for
-Protocol Buffers (PB).  ZIO provides a simple "logger" like C++ API to
-marshal data between the application and ZeroMQ transports (TCP, IPC,
-shared memory).  ZIO provides typed data handling and includes support
-for plain text, structured data transported as JSON strings, various
-binary encoding (MessagePack, binary JSONs, etc), generic binary and
-protocol buffers.
-
-ZPB uses ZIO as the transport and PB as the low level serialization
-format to provides a number of WCT data interface converter
-components.  With ZPB one can "break" an edge in a WCT graph and
-extract its data flow into some other context, eg for output to file.
+The Z stands for [[https://brettviren.github.io/zio][ZIO]] which takes its Z from ZeroMQ.  The PB stands for
+Protocol Buffers (PB).  ZPB uses ZIO as the transport and maps PB
+objects to ~IData~ classes for serialization to ZIO payloads.  With ZPB
+WCT components one can "break" an edge in a WCT graph and extract its
+data flow into some other context, eg for output to file.
 
 Its use is exemplified in the following diagram:
 
