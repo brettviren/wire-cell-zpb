@@ -13,10 +13,11 @@
 #include "WireCellIface/IConfigurable.h"
 #include "WireCellUtil/Logging.h"
 #include "zio/node.hpp"
-
+#include "zio/flow.hpp"
 
 #include "google/protobuf/message.h"
 
+#include <memory>
 #include <unordered_map>
 
 
@@ -65,13 +66,25 @@ namespace WireCell {
             zio::message_t pack(::google::protobuf::Message& pbmsg);
 
 
+            /// Unpack ZIO payload to a PB message of expected type.
+            void unpack(const zio::message_t& spmsg, ::google::protobuf::Message& pbmsg);
+
+            /// Return a Flow on a port.
+            std::unique_ptr<zio::flow::Flow> make_flow(const std::string& portname,
+                                                       const std::string& direction,
+                                                       int credits);
+
+            /// Subclass gets notification of being online.
+            /// After this, ports should be hooked up.
+            virtual void online();
+
             zio::Node m_node;
             node_config_t m_nc;
             Log::logptr_t l;                
             int m_timeout;      // a timeout to use when recv'ing
 
         private:
-            void online();            
+            void go_online();
         };
     }
 }

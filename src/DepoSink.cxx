@@ -24,20 +24,12 @@ Zpb::DepoSink::~DepoSink()
 {
 }
 
-bool Zpb::DepoSink::validate()
+void Zpb::DepoSink::online()
 {
-    auto port = m_node.port(PORTNAME);
-    if (!port) return false;
-
-    m_flow = std::make_unique<zio::flow::Flow>(port);
-    zio::Message msg("FLOW");
-    zio::json fobj = {{"flow","BOT"},{"direction","extract"},{"credits",10}};
-    msg.set_label(fobj.dump());
-
-    // WARNING, this send/recv will deadlock if our other end is
-    // running in the same thread.
-    m_flow->send_bot(msg);
-    return m_flow->recv_bot(msg, m_timeout);
+    m_flow = make_flow(PORTNAME, "extract", 10);
+    if (!m_flow) {
+        THROW(RuntimeError() << errmsg{"failed to make flow"});
+    }
 }
 
 bool Zpb::DepoSink::operator()(const IDepo::pointer& depo)

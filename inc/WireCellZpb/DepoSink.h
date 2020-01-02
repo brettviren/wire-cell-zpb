@@ -4,8 +4,6 @@
 #include "WireCellIface/IDepoSink.h"
 #include "WireCellZpb/NodeConfigurable.h"
 
-#include "zio/flow.hpp"
-
 #include <memory>
 
 namespace WireCell {
@@ -21,7 +19,7 @@ namespace WireCell {
         private:
 
 
-            virtual bool validate() override;
+            virtual void online() override;
 
             std::unique_ptr<zio::flow::Flow> m_flow;
 

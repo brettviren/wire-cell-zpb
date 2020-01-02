@@ -90,7 +90,11 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
     int verbose = 0;
     if (! cfg["verbose"].empty()) {
         verbose = cfg["verbose"].asInt();
-        m_node.set_verbose(verbose);
+        if (verbose) {
+            l->debug("node {}: verbose", m_nc.nick);
+            zsys_init();
+            m_node.set_verbose(verbose);
+        }
     }
 
     for (auto pp : m_nc.ports) {
@@ -157,12 +161,17 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
     }
 
 
+    go_online();
     online();
 }
 
 
 
 void Zpb::NodeConfigurable::online()
+{
+}
+
+void Zpb::NodeConfigurable::go_online()
 {
     bool ok = validate();
     if (!ok) {
@@ -186,4 +195,46 @@ zio::message_t Zpb::NodeConfigurable::pack(::google::protobuf::Message& msg)
     zio::message_t ret(any->ByteSize());
     any->SerializeToArray(ret.data(), ret.size());
     return ret;
+}
+
+void Zpb::NodeConfigurable::unpack(const zio::message_t& spmsg, ::google::protobuf::Message& pbmsg)
+{
+    wirecell::zpb::data::Payload pbpl;
+    pbpl.ParseFromArray(spmsg.data(), spmsg.size());
+    pbpl.objects(0).UnpackTo(&pbmsg);
+}
+
+
+
+std::unique_ptr<zio::flow::Flow>
+Zpb::NodeConfigurable::make_flow(const std::string& portname,
+                                 const std::string& direction,
+                                 int credits)
+{
+
+    auto port = m_node.port(portname);
+    if (!port) return nullptr;
+
+    auto flow = std::make_unique<zio::flow::Flow>(port);
+    zio::Message msg("FLOW");
+    zio::json fobj = {{"flow","BOT"},
+                      {"direction",direction},
+                      {"credits",credits}};
+    msg.set_label(fobj.dump());
+
+    int stype = zio::sock_type(port->socket());
+    if (stype == ZMQ_SERVER) {
+        // This strains the flow protocol a bit to pretend to be a
+        // server.  It'll fall over if multiple clients try to
+        // connect.  But it allows some testing with a simpler graph.
+        bool ok = flow->recv_bot(msg, m_timeout);
+        if (!ok) { return nullptr; }
+        flow->send_bot(msg);
+    }
+    else {
+        flow->send_bot(msg);
+        bool ok = flow->recv_bot(msg, m_timeout);
+        if (!ok) { return nullptr; }
+    }
+    return flow;
 }

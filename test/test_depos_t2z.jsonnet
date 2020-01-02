@@ -36,6 +36,7 @@ local common = import "test_depos_common.jsonnet";
         data: {
             nick: "depogobbler",
             verbose: 1,
+            timeout: 10000,
             ports: {
                 output: {
                     stype: zmq.stype("client"),
