@@ -73,3 +73,67 @@ message DepoSet {
   // The depos in the set.
   repeated Depo depos = 2;
 }
+
+message FloatArray {
+    repeated float elements = 1;
+}
+message IntArray {
+    repeated int32 elements = 1;
+}
+
+message Trace {
+    // Identifier for the channel on which this trace was recorded
+    int32 channel = 1;
+
+    // The time bin relative to some absolute time at which the first
+    // ADC/charge in the trace was digitized (leading bin edge).
+    int32 tbin = 2;
+
+    // Contiguous ADC/charge measurement on the channel starting at
+    // tbin.
+    FloatArray samples = 3;
+}
+
+message BinRangeList {
+    // Array of begin sample indices of some range
+    repeated int32 beg = 1;
+    // Array of end sample indices (non-inclusive) of some range
+    repeated int32 end = 2;    
+}
+
+message ChannelMasks {
+    // Map a channel ID to a bin range list
+    map<int32, BinRangeList> bin_range_lists = 1;
+}
+
+message Frame {
+
+    // An identifying number for this frame.
+    int32 ident = 1;
+
+    // A reference time for this frame w.r.t. some global time origin.
+    // Each trace tbin counts samples w.r.t. this time
+    double time = 2;
+
+    // The digitization sample period assumed for the traces.
+    double tick = 3;
+
+    // The list of all traces in the frame.
+    repeated Trace traces = 4;
+
+    // List of tags applied to this frame as a whole
+    repeated string frame_tags = 5;
+
+    // Map of a trace tag to an array of integer indices into the
+    // traces array.
+    map<string, IntArray> tagged_traces = 6;
+
+    // Map of a trace tag to an array of values with each
+    // corresponding to a tagged trace index in the tagged traces map.
+    // Every key in trace_summaries should exist in tagged_traces (but
+    // not necessarily vice versa)
+    map<string, FloatArray> trace_summaries = 7;
+
+    // Map a channel mask tag to a set of channel masks.
+    map<string, ChannelMasks> channel_masks = 8;
+}
