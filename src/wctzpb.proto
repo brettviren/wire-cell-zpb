@@ -8,7 +8,7 @@
 // - 
 
 syntax = "proto3";
-package wirecell.zpb.data;
+package wctzpb;
 
 import "google/protobuf/any.proto";
 

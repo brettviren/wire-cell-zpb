@@ -70,9 +70,11 @@ namespace WireCell {
             void unpack(const zio::message_t& spmsg, ::google::protobuf::Message& pbmsg);
 
             /// Return a Flow on a port.
-            std::unique_ptr<zio::flow::Flow> make_flow(const std::string& portname,
-                                                       const std::string& direction,
-                                                       int credits);
+            typedef std::unique_ptr<zio::flow::Flow> flowptr_t;
+            flowptr_t make_flow(const std::string& portname,
+                                const std::string& direction,
+                                int credits);
+
 
             /// Subclass gets notification of being online.
             /// After this, ports should be hooked up.

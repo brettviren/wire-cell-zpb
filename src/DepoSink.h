@@ -2,7 +2,7 @@
 #define WIRECELL_ZPB_DEPOSINK_H
 
 #include "WireCellIface/IDepoSink.h"
-#include "WireCellZpb/NodeConfigurable.h"
+#include "NodeConfigurable.h"
 
 #include <memory>
 
@@ -21,9 +21,10 @@ namespace WireCell {
 
             virtual void online() override;
 
-            std::unique_ptr<zio::flow::Flow> m_flow;
 
             bool m_had_eos{false};
+
+            flowptr_t m_flow;
         };
     }
 }

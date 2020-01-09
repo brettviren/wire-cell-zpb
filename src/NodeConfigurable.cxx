@@ -1,4 +1,4 @@
-#include "WireCellZpb/NodeConfigurable.h"
+#include "NodeConfigurable.h"
 #include "WireCellUtil/Exceptions.h"
 
 #include "wctzpb.pb.h"
@@ -188,7 +188,7 @@ void Zpb::NodeConfigurable::go_online()
 
 zio::message_t Zpb::NodeConfigurable::pack(::google::protobuf::Message& msg)
 {
-    wirecell::zpb::data::Payload pl;
+    wctzpb::Payload pl;
     auto any = pl.add_objects();
     any->PackFrom(msg);
 
@@ -199,14 +199,14 @@ zio::message_t Zpb::NodeConfigurable::pack(::google::protobuf::Message& msg)
 
 void Zpb::NodeConfigurable::unpack(const zio::message_t& spmsg, ::google::protobuf::Message& pbmsg)
 {
-    wirecell::zpb::data::Payload pbpl;
+    wctzpb::Payload pbpl;
     pbpl.ParseFromArray(spmsg.data(), spmsg.size());
     pbpl.objects(0).UnpackTo(&pbmsg);
 }
 
 
 
-std::unique_ptr<zio::flow::Flow>
+Zpb::NodeConfigurable::flowptr_t
 Zpb::NodeConfigurable::make_flow(const std::string& portname,
                                  const std::string& direction,
                                  int credits)
@@ -238,3 +238,5 @@ Zpb::NodeConfigurable::make_flow(const std::string& portname,
     }
     return flow;
 }
+
+
