@@ -1,5 +1,5 @@
-#include "DepoSource.h"
-#include "Converters.h"
+#include "WireCellZpb/DepoSource.h"
+#include "WireCellZpb/Converters.h"
 #include "WireCellUtil/NamedFactory.h"
 
 WIRECELL_FACTORY(ZpbDepoSource, WireCell::Zpb::DepoSource,

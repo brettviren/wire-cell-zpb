@@ -2,3 +2,6 @@ auto
 README.tex
 ltximg
 README.pdf
+*~
+.lock-waf*
+build

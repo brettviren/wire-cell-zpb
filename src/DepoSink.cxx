@@ -1,5 +1,5 @@
-#include "DepoSink.h"
-#include "Converters.h"
+#include "WireCellZpb/DepoSink.h"
+#include "WireCellZpb/Converters.h"
 #include "WireCellUtil/NamedFactory.h"
 
 

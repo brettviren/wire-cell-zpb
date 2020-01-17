@@ -1,4 +1,4 @@
-#include "NodeConfigurable.h"
+#include "WireCellZpb/NodeConfigurable.h"
 #include "WireCellUtil/Exceptions.h"
 
 #include "wctzpb.pb.h"

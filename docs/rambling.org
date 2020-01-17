@@ -1,0 +1,133 @@
+#+title: Wire-Cell Toolkit ZPB
+
+ZIO transport of WCT ~IData~ objects using protocol buffers.
+
+* Overview
+
+At the start of development of the ZPB package, WCT lacked any
+comprehensive data I/O (serialization) mechanism.  There are some
+special case components (/eg/ as provided by the ~sio~, ~hio~ and ~root~ WCT
+subpackages) which can perform file I/O on a subset of data types,
+each using a few different file formats and with various other
+restrictions and caveats.  These are useful for debugging and
+validation or other special purposes but are nonetheless follow from
+ad-hoc development and fail to contend with some exiting and future
+challenges faced by any I/O solution.  Some of these problems are
+introduced here with the following questions and how this package
+attempts to answer them.
+
+- How to support the large variety of data *interface* classes while
+  serialization requires concrete data structure implementations?
+
+  - Model ~IData~ structure in protocol buffer (PB) language, use
+    resulting PB objects for serialization.
+
+- How to effectively share a file descriptor between unrelated,
+  independent WCT components?
+
+  - Instead, aggregate data into local context controlling a file
+    descriptor.
+
+- How to decouple the parts touching the WCT graph from the parts
+  touching a particular choice of file or other serialization
+  technology?
+
+  - Inject WCT components to a WCT graph which can convert to/from
+    ~IData~ and transmit over ZeroMQ.
+
+- How to consume data from and produce data to a number of WCT
+  components operating asynchronously from each other and in different
+  thread contexts?
+
+  - ZeroMQ transports safely across threads.
+
+- How to provide fast buffing to ameliorate I/O wait times and so that
+  the processing in the rest of the graph does not stall?
+
+  - ZeroMQ provides buffering at the socket and on both input and output.
+
+- How to contend with future ideas of allowing a WCT graph to execute
+  across multiple computers on a local network?
+
+  - ZeroMQ is transparently inter-thread, inter-process and
+    inter-computer.
+
+* How ZPB works
+
+The Z stands for [[https://brettviren.github.io/zio][ZIO]] which takes its Z from ZeroMQ.  The PB stands for
+Protocol Buffers (PB).  ZPB uses ZIO as the transport and maps PB
+objects to ~IData~ classes for serialization to ZIO payloads.  With ZPB
+WCT components one can "break" an edge in a WCT graph and extract its
+data flow into some other context, eg for output to file.
+
+Its use is exemplified in the following diagram:
+
+#+begin_src dot :file readme-figure.png
+  digraph break {
+          rankdir=LR
+          subgraph cluster_cap {
+                  label="Data replay"
+                  c2a[label="c2"]
+                  sinksend[label="ZPB", shape="folder"]
+                  recvsrc[label="ZPB", shape="rarrow"]
+          }
+          subgraph cluster_rep {
+                  label="Data capture"
+                  c1b[label="c1"]
+                  c2b[label="c2"]
+                  fo[label="fanout",shape=cds]
+                  sinksendb[label="ZPB", shape="rarrow"]
+                  recvsrcb[label="ZPB", shape="folder"]
+          }
+          subgraph cluster_sink {
+                  label="Data sink"
+                  c1c[label="c1"]
+                  sinksendc[label="ZPB", shape="rarrow"]
+                  recvsrcc[label="ZPB", shape="folder"]
+          }
+          subgraph cluster_orig {
+                  label="Original edge"
+                  c1
+                  c2
+          }
+          sinksend->recvsrc[style=dashed,dir=none]
+          c1c->sinksendc;
+          sinksendc->recvsrcc[style=dashed,dir=none]
+          recvsrc->c2a
+          c1b->fo->c2b
+          fo->sinksendb
+          sinksendb->recvsrcb[style=dashed,dir=none]
+          c1->c2
+  }
+#+end_src
+
+#+RESULTS:
+[[file:readme-figure.png]]
+
+
+In these examples, the original edge *c1* $\to$ *c2* represents a
+connection between two components in a possibly much larger WCT graph.
+On that edge passes data interface objects of some type (eg ~IFrame~).
+
+The second /data sink/ example is destructive of the original graph in
+that *c2* (and downstream) are fully eliminated.  Instead a new ZPB
+component replaces *c2*, converts the data to a serializable form (ZIO)
+and transmits (dashed edge) it to a final sink for storage into a file.
+
+Alternatively, the /data capture/ example rewrites the original graph by
+breaking the *c1* $\to$ *c2* edge and inserting a fanout.  One output of
+the fan continues to *c2* allowing it to execute and a second output of
+the fan is directed to the ZPB component.
+
+The final /data replay/ example replaces *c1* with a ZPB source fed from a
+previously written file.  This allows *c2* to rerun as if *c1* was still
+existing.
+
+In a more realistically complex graph, there will be multiple edges
+"tapped".  This multiplicity will be both across the graph (ie, same
+data types tapped from edges representing parallel pipeline
+structures) as well as along the graph (eg, not just tapping *c1* $\to$
+*c2* but also *c2* $\to$ *c3*, etc).  
+
+More extensions to these basic tools as well as the preliminary
+conceptual ideas that led to ZIO and ZPB can be found in this [[file:docs/writeup.org][writeup]].
