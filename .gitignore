@@ -5,3 +5,6 @@ README.pdf
 *~
 .lock-waf*
 build
+venv
+*.egg-info
+__pycache__

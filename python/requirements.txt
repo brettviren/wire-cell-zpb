@@ -1,0 +1,2 @@
+git+https://github.com/brettviren/rule.git#egg=rule-0.1.2bv
+git+https://github.com/brettviren/zio.git#egg=zio-0.0.0&subdirectory=python
