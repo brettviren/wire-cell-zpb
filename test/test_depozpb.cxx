@@ -10,9 +10,15 @@ using namespace WireCell;
 
 using namespace std;
 
+const char* addr = "inproc://test_depozpb";
+
 // a very very ugly server
-void server(Log::logptr_t l, zio::socket_t& s)
+void server(Log::logptr_t l)
 {
+    zio::context_t ctx;
+    zio::socket_t s(ctx, ZMQ_SERVER);
+    s.bind(addr);
+
     std::map<uint32_t,uint32_t> rids;
     std::vector<zio::message_t> tosend;
 
@@ -57,8 +63,20 @@ void server(Log::logptr_t l, zio::socket_t& s)
 
 }
 
-void depo_extraction(Log::logptr_t l, Zpb::DepoSink& us)
+void depo_extraction(Log::logptr_t l)
 {
+    Zpb::DepoSink us;           // source of zio messages
+
+    auto us_cfg = us.default_configuration();
+    us_cfg["timeout"] = 1000;
+    us_cfg["ports"]["extract-depos"]["stype"] = ZMQ_CLIENT;
+    us_cfg["ports"]["extract-depos"]["connects"][0] = addr;
+
+    l->info("DepoSink config:\n{}", us_cfg);
+    l->info("configuring upstream");
+    us.configure(us_cfg);
+
+
     l->info("extract thread: sending depo");
 
     IDepo::pointer depo1 = std::make_shared<SimpleDepo>(6.9,WireCell::Point(0,0,0));
@@ -70,8 +88,19 @@ void depo_extraction(Log::logptr_t l, Zpb::DepoSink& us)
     assert(ok);
 }
 
-void depo_injection(Log::logptr_t l, Zpb::DepoSource& ds)
+void depo_injection(Log::logptr_t l)
 {
+    Zpb::DepoSource ds;         // down stream sources IDepo consumes messages
+    auto ds_cfg = ds.default_configuration();
+    ds_cfg["timeout"] = 1000;
+    ds_cfg["ports"]["inject-depos"]["stype"] = ZMQ_CLIENT;
+    ds_cfg["ports"]["inject-depos"]["connects"][0] = addr;
+
+
+    cerr << "DepoSource config:\n" << ds_cfg << "\n";
+
+    l->info("configuring downstream");
+    ds.configure(ds_cfg);
 
     l->info("inject thread: recving depo");
 
@@ -94,42 +123,13 @@ int main()
     Log::logptr_t l(Log::logger("tst"));
     l->info("test_depozpb starting");
 
-    Zpb::DepoSink us;           // up stream sinks IDepo produces messages
-    Zpb::DepoSource ds;         // down stream sources IDepo consumes messages
-
-    auto us_cfg = us.default_configuration();
-    auto ds_cfg = ds.default_configuration();
-
-    zio::context_t ctx;
-    zio::socket_t s(ctx, ZMQ_SERVER);
-    const char* addr = "inproc://test_depozpb";
-    s.bind(addr);
-
-    us_cfg["timeout"] = 1000;
-    us_cfg["ports"]["extract-depos"]["stype"] = ZMQ_CLIENT;
-    us_cfg["ports"]["extract-depos"]["connects"][0] = addr;
-    ds_cfg["timeout"] = 1000;
-    ds_cfg["ports"]["inject-depos"]["stype"] = ZMQ_CLIENT;
-    ds_cfg["ports"]["inject-depos"]["connects"][0] = addr;
-
-    ds_cfg["verbose"] = 1;
-    us_cfg["verbose"] = 1;
-
-    cerr << "DepoSink config:\n" << us_cfg << "\n";
-    cerr << "DepoSource config:\n" << ds_cfg << "\n";
-
-    l->info("configuring upstream");
-    us.configure(us_cfg);
-    l->info("configuring downstream");
-    ds.configure(ds_cfg);
-
-
-    l->info("starting threads");
-    std::thread ser(server, l, std::ref(s));
+    l->info("starting server thread");
+    std::thread ser(server, l);
     usleep(100000);
-    std::thread tus(depo_extraction, l, std::ref(us));
-    usleep(100000);
-    std::thread tds(depo_injection, l, std::ref(ds));
+
+    l->info("starting client threads");
+    std::thread tus(depo_extraction, l);
+    std::thread tds(depo_injection, l);
 
     l->info("joining threads");
     tus.join();

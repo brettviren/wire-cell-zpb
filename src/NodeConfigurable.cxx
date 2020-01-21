@@ -249,6 +249,16 @@ Zpb::NodeConfigurable::flow_bot(Zpb::NodeConfigurable::flowptr_t& flow,
             return false;
         }
     }
+
+    if (direction == "extract") {
+        l->debug("node {}: slurp pay for {}", m_nc.nick, direction);
+        flow->slurp_pay(0);
+    }
+    else {                      // inject
+        l->debug("node {}: flush pay for {}", m_nc.nick, direction);
+        flow->flush_pay();
+    }
+
     return true;
 }
 
