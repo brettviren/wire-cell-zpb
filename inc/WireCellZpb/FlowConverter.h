@@ -16,8 +16,11 @@ namespace WireCell {
         template<class WCTDATA, class PBDATA>
         class FlowConverter : public NodeConfigurable {
             std::string m_direction, m_portname;
-            bool m_had_eos{false};
             flowptr_t m_flow;
+            bool m_had_eos{false};
+            bool m_did_bot{false};
+            bool m_serverish{false};
+            int m_credits{10};
         public:
             
             typedef PBDATA pb_type;
@@ -36,6 +39,11 @@ namespace WireCell {
 
             // Use me as a WCT sink
             virtual bool wct2zpb(const pointer& wctdat) {
+                if (!m_did_bot) {
+                    flow_bot(m_flow, m_direction, m_credits, m_serverish);
+                    m_did_bot = true;
+                }
+
                 zio::Message msg("FLOW");
 
                 if (!wctdat) {
@@ -69,6 +77,11 @@ namespace WireCell {
 
             // Use me as a WCT source
             virtual bool pb2wct(pointer& wctdat) {
+                if (!m_did_bot) {
+                    flow_bot(m_flow, m_direction, m_credits, m_serverish);
+                    m_did_bot = true;
+                }
+
                 wctdat = nullptr;
 
                 zio::Message msg;
@@ -93,14 +106,16 @@ namespace WireCell {
         private:
 
             virtual void user_default_configuration(Configuration& cfg) const {
-                cfg["credits"] = 10;
+                cfg["credits"] = m_credits;
             }
             virtual void user_configure(const Configuration& cfg) {
-                int credits = cfg["credits"].asInt();
-                m_flow = make_flow(m_portname, m_direction, credits);
+                m_credits = get(cfg, "credits", m_credits);
+                m_flow = make_flow(m_portname);
                 if (!m_flow) {
                     THROW(RuntimeError() << errmsg{"failed to make flow"});
                 }
+                auto port = m_node.port(m_portname);
+                m_serverish = ZMQ_SERVER == zio::sock_type(port->socket());
             }
             virtual void user_online() {
                 // if (m_direction == "inject") {

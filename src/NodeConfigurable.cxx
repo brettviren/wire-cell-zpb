@@ -107,7 +107,8 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
         }
         int stype = compatible_stype(pp.second, jport["stype"]);
         if (stype < 0) {
-             l->critical("node {}: bad socket type for port {}", m_nc.nick, pname);
+            l->critical("node {}: bad socket type {} (def:{}) for port {}",
+                        m_nc.nick, jport["stype"].asInt(), pp.second, pname);
             THROW(ValueError() << errmsg{"bad socket type"});
         }
 
@@ -204,38 +205,50 @@ void Zpb::NodeConfigurable::unpack(const zio::message_t& spmsg, ::google::protob
 
 
 Zpb::NodeConfigurable::flowptr_t
-Zpb::NodeConfigurable::make_flow(const std::string& portname,
-                                 const std::string& direction,
-                                 int credits)
+Zpb::NodeConfigurable::make_flow(const std::string& portname)
 {
 
     auto port = m_node.port(portname);
     if (!port) return nullptr;
 
     auto flow = std::make_unique<zio::flow::Flow>(port);
+    return flow;
+}
+
+bool
+Zpb::NodeConfigurable::flow_bot(Zpb::NodeConfigurable::flowptr_t& flow,
+                                const std::string& direction,
+                                int credits, bool serverish)
+{
     zio::Message msg("FLOW");
     zio::json fobj = {{"flow","BOT"},
                       {"direction",direction},
                       {"credits",credits}};
     msg.set_label(fobj.dump());
 
-#if 0
-    int stype = zio::sock_type(port->socket());
-    if (stype == ZMQ_SERVER) {
+    if (serverish) {
         // This strains the flow protocol a bit to pretend to be a
         // server.  It'll fall over if multiple clients try to
         // connect.  But it allows some testing with a simpler graph.
+        l->debug("node {}: serverish BOT recv", m_nc.nick);
         bool ok = flow->recv_bot(msg, m_timeout);
-        if (!ok) { return nullptr; }
+        if (!ok) {
+            l->warn("node {}: serverish BOT recv timeout", m_nc.nick);
+            return false;
+        }
+        l->debug("node {}: serverish BOT send", m_nc.nick);
         flow->send_bot(msg);
     }
-    else if (stype == ZMQ_CLIENT) {
+    else {
+        l->debug("node {}: clientish BOT send", m_nc.nick);
         flow->send_bot(msg);
+        l->debug("node {}: clientish BOT recv", m_nc.nick);
         bool ok = flow->recv_bot(msg, m_timeout);
-        if (!ok) { return nullptr; }
+        if (!ok) {
+            l->warn("node {}: clientish BOT recv timeout", m_nc.nick);
+            return false;
+        }
     }
-#endif
-    return flow;
+    return true;
 }
-
 

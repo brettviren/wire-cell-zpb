@@ -31,7 +31,7 @@ void Zpb::FrameSink::user_default_configuration(WireCell::Configuration& cfg) co
 void Zpb::FrameSink::user_configure(const WireCell::Configuration& cfg)
 {
     int credits = cfg["credits"].asInt();
-    m_flow = make_flow(PORTNAME, "extract", 10);
+    m_flow = make_flow(PORTNAME);//, "extract", 10);
     if (!m_flow) {
         THROW(RuntimeError() << errmsg{"failed to make flow"});
     }
