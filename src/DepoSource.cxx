@@ -21,9 +21,15 @@ Zpb::DepoSource::~DepoSource()
 {
 }
 
-void Zpb::DepoSource::online()
+void Zpb::DepoSource::user_default_configuration(WireCell::Configuration& cfg) const
 {
-    m_flow = make_flow(PORTNAME, "inject", 10);
+    cfg["credits"] = 10;
+}
+
+void Zpb::DepoSource::user_configure(const WireCell::Configuration& cfg)
+{
+    int credits = cfg["credits"].asInt();
+    m_flow = make_flow(PORTNAME, "inject", credits);
     if (!m_flow) {
         THROW(RuntimeError() << errmsg{"failed to make flow"});
     }

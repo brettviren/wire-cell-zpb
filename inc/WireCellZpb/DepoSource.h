@@ -16,7 +16,8 @@ namespace WireCell {
 
         private:
 
-            virtual void online() override;
+            virtual void user_default_configuration(WireCell::Configuration& cfg) const;
+            virtual void user_configure(const WireCell::Configuration& cfg);
 
             flowptr_t m_flow;
 

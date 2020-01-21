@@ -5,6 +5,7 @@
 #define WIRECELL_ZPB_CONVERTERS
 
 #include "WireCellIface/IDepo.h"
+#include "WireCellIface/IFrame.h"
 #include "wctzpb.pb.h"
 
 namespace WireCell {
@@ -15,6 +16,12 @@ namespace WireCell {
                      
         /// Depo WCT to PB
         wctzpb::Depo convert(const IDepo::pointer& depo);
+                     
+        /// Frame PB to WCT
+        IFrame::pointer convert(const wctzpb::Frame& frame);
+                     
+        /// Frame WCT to PB
+        wctzpb::Frame convert(const IFrame::pointer& frame);
                      
 
     }

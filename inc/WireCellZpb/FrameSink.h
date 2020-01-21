@@ -1,7 +1,7 @@
-#ifndef WIRECELL_ZPB_DEPOSINK_H
-#define WIRECELL_ZPB_DEPOSINK_H
+#ifndef WIRECELL_ZPB_FRAMESINK_H
+#define WIRECELL_ZPB_FRAMESINK_H
 
-#include "WireCellIface/IDepoSink.h"
+#include "WireCellIface/IFrameSink.h"
 #include "NodeConfigurable.h"
 
 #include <memory>
@@ -9,12 +9,12 @@
 namespace WireCell {
     namespace Zpb { 
 
-        class DepoSink : public WireCell::IDepoSink,  public NodeConfigurable {
+        class FrameSink : public WireCell::IFrameSink,  public NodeConfigurable {
         public:
-            DepoSink();
-            virtual ~DepoSink() ;
+            FrameSink();
+            virtual ~FrameSink() ;
 
-            virtual bool operator()(const IDepo::pointer& depo);
+            virtual bool operator()(const IFrame::pointer& frame);
 
         private:
 

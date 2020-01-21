@@ -69,16 +69,25 @@ namespace WireCell {
             /// Unpack ZIO payload to a PB message of expected type.
             void unpack(const zio::message_t& spmsg, ::google::protobuf::Message& pbmsg);
 
-            /// Return a Flow on a port.
+            /// Return a Flow on a port.  Credits give the maximum
+            /// number of messages that may be "in flight" in the flow
+            /// at one time.
             typedef std::unique_ptr<zio::flow::Flow> flowptr_t;
             flowptr_t make_flow(const std::string& portname,
                                 const std::string& direction,
-                                int credits);
+                                int credits = 10);
 
 
-            /// Subclass gets notification of being online.
-            /// After this, ports should be hooked up.
-            virtual void online();
+            /// Give subclass a chance to add to a configuration
+            virtual void user_default_configuration(WireCell::Configuration& cfg) const {};
+
+            /// Give subclass a chance to read a configuration.  Ports
+            /// are not yet online.
+            virtual void user_configure(const WireCell::Configuration& cfg) {};
+
+            /// Give subclass a chance to do something just after
+            /// going online (after all ports bound/connected).
+            virtual void user_online() {};
 
             zio::Node m_node;
             node_config_t m_nc;

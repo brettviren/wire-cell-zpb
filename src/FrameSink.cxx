@@ -1,32 +1,34 @@
-#include "WireCellZpb/DepoSink.h"
+#include "WireCellZpb/FrameSink.h"
 #include "WireCellZpb/Converters.h"
 #include "WireCellUtil/NamedFactory.h"
 
 
-WIRECELL_FACTORY(ZpbDepoSink, WireCell::Zpb::DepoSink,
-                 WireCell::IDepoSink, WireCell::IConfigurable)
+WIRECELL_FACTORY(ZpbFrameSink, WireCell::Zpb::FrameSink,
+                 WireCell::IFrameSink, WireCell::IConfigurable)
 
 using namespace WireCell;
 
 const std::string PORTNAME = "output";
 
-Zpb::DepoSink::DepoSink()
+Zpb::FrameSink::FrameSink()
     : NodeConfigurable(NodeConfigurable::node_config_t{
-            "ZpbDepoSink",
-            "wct-zpb-depo-sink",
+            "ZpbFrameSink",
+            "wct-zpb-frame-sink",
             {{PORTNAME,ZMQ_CLIENT}}})
 {
 }
 
-Zpb::DepoSink::~DepoSink()
+Zpb::FrameSink::~FrameSink()
 {
 }
 
-void Zpb::DepoSink::user_default_configuration(WireCell::Configuration& cfg) const
+// fixme: all "sinks" in this package could probably inherit from the
+// same intermediate class as this and the next config method will be identical.
+void Zpb::FrameSink::user_default_configuration(WireCell::Configuration& cfg) const
 {
     cfg["credits"] = 10;
 }
-void Zpb::DepoSink::user_configure(const WireCell::Configuration& cfg)
+void Zpb::FrameSink::user_configure(const WireCell::Configuration& cfg)
 {
     int credits = cfg["credits"].asInt();
     m_flow = make_flow(PORTNAME, "extract", 10);
@@ -34,11 +36,13 @@ void Zpb::DepoSink::user_configure(const WireCell::Configuration& cfg)
         THROW(RuntimeError() << errmsg{"failed to make flow"});
     }
 }
-bool Zpb::DepoSink::operator()(const IDepo::pointer& depo)
+// fixme: this method is almost identical with the one for depos
+// except for types.  It could be templated.
+bool Zpb::FrameSink::operator()(const IFrame::pointer& frame)
 {
     zio::Message msg("FLOW");        
 
-    if (!depo) {
+    if (!frame) {
         if (m_had_eos) {
             m_flow->send_eot(msg);
             m_flow->recv_eot(msg, m_timeout);
@@ -54,7 +58,7 @@ bool Zpb::DepoSink::operator()(const IDepo::pointer& depo)
         return true;
     }
 
-    wctzpb::Depo out = Zpb::convert(depo);
+    wctzpb::Frame out = Zpb::convert(frame);
     zio::message_t pl = pack(out);
     msg.add(std::move(pl));
 
@@ -65,6 +69,7 @@ bool Zpb::DepoSink::operator()(const IDepo::pointer& depo)
         return false;
     }
     return true;
+
 }
 
 

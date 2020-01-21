@@ -48,6 +48,7 @@ WireCell::Configuration Zpb::NodeConfigurable::default_configuration() const
 {
     Configuration cfg = jsonify(m_nc);
     cfg["timeout"] = m_timeout; // recv timeout, msec
+    user_default_configuration(cfg);
     return cfg;
 }
 
@@ -161,15 +162,11 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
     }
 
 
+    user_configure(cfg);
     go_online();
-    online();
+    user_online();
 }
 
-
-
-void Zpb::NodeConfigurable::online()
-{
-}
 
 void Zpb::NodeConfigurable::go_online()
 {
