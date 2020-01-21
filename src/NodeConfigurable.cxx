@@ -62,11 +62,11 @@ static int compatible_stype(int def, const Configuration& cfg)
     const int got = cfg.asInt();
     if (def == got) { return got; }
 
-    bool def_sender = def == ZMQ_PUB or def == ZMQ_PUSH or def == ZMQ_RADIO or def == ZMQ_CLIENT;
-    bool def_recver = def == ZMQ_SUB or def == ZMQ_PULL or def == ZMQ_DISH  or def == ZMQ_SERVER;
+    bool def_sender = def == ZMQ_PUB or def == ZMQ_PUSH or def == ZMQ_RADIO or def == ZMQ_CLIENT or def == ZMQ_PAIR;
+    bool def_recver = def == ZMQ_SUB or def == ZMQ_PULL or def == ZMQ_DISH  or def == ZMQ_SERVER or def == ZMQ_PAIR;
 
-    bool got_sender = got == ZMQ_PUB or got == ZMQ_PUSH or got == ZMQ_RADIO or got == ZMQ_CLIENT;
-    bool got_recver = got == ZMQ_SUB or got == ZMQ_PULL or got == ZMQ_DISH  or got == ZMQ_SERVER;
+    bool got_sender = got == ZMQ_PUB or got == ZMQ_PUSH or got == ZMQ_RADIO or got == ZMQ_CLIENT or got == ZMQ_PAIR;
+    bool got_recver = got == ZMQ_SUB or got == ZMQ_PULL or got == ZMQ_DISH  or got == ZMQ_SERVER or got == ZMQ_PAIR;
 
     if (def_sender and got_sender) {
         return got;
@@ -107,7 +107,7 @@ void Zpb::NodeConfigurable::configure(const WireCell::Configuration& cfg)
         }
         int stype = compatible_stype(pp.second, jport["stype"]);
         if (stype < 0) {
-            l->critical("node {}: bad socket type for port {}", m_nc.nick, pname);
+             l->critical("node {}: bad socket type for port {}", m_nc.nick, pname);
             THROW(ValueError() << errmsg{"bad socket type"});
         }
 

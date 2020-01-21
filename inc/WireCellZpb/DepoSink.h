@@ -2,29 +2,21 @@
 #define WIRECELL_ZPB_DEPOSINK_H
 
 #include "WireCellIface/IDepoSink.h"
-#include "NodeConfigurable.h"
+#include "FlowConverter.h"
 
-#include <memory>
+//#include <memory>
 
 namespace WireCell {
     namespace Zpb { 
 
-        class DepoSink : public WireCell::IDepoSink,  public NodeConfigurable {
+        class DepoSink : public FlowConverter<WireCell::IDepo, wctzpb::Depo>,
+                         public WireCell::IDepoSink
+        {
         public:
             DepoSink();
-            virtual ~DepoSink() ;
 
-            virtual bool operator()(const IDepo::pointer& depo);
+            virtual bool operator()(const WireCell::IDepo::pointer& wctdat);
 
-        private:
-
-
-            virtual void user_default_configuration(WireCell::Configuration& cfg) const;
-            virtual void user_configure(const WireCell::Configuration& cfg);
-
-            bool m_had_eos{false};
-
-            flowptr_t m_flow;
         };
     }
 }

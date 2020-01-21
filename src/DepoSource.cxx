@@ -10,12 +10,18 @@ using namespace WireCell;
 const std::string PORTNAME = "input";
 
 Zpb::DepoSource::DepoSource()
-    : NodeConfigurable(NodeConfigurable::node_config_t{
-            "ZpbDepoSource",
-            "wct-zpb-depo-source",
-            {{PORTNAME,ZMQ_SUB}}})
+    : FlowConverter("ZpbDepoSource", "wct-zpb-depo-source",
+                    "inject", "inject-depos")
 {
 }
+
+
+bool Zpb::DepoSource::operator()(IDepo::pointer& depo)
+{
+    return pb2wct(depo);
+}
+
+#if 0
 
 Zpb::DepoSource::~DepoSource()
 {
@@ -60,3 +66,4 @@ bool Zpb::DepoSource::operator()(IDepo::pointer& depo)
     return true;
 }
 
+#endif
