@@ -219,6 +219,7 @@ Zpb::NodeConfigurable::make_flow(const std::string& portname,
                       {"credits",credits}};
     msg.set_label(fobj.dump());
 
+#if 0
     int stype = zio::sock_type(port->socket());
     if (stype == ZMQ_SERVER) {
         // This strains the flow protocol a bit to pretend to be a
@@ -228,11 +229,12 @@ Zpb::NodeConfigurable::make_flow(const std::string& portname,
         if (!ok) { return nullptr; }
         flow->send_bot(msg);
     }
-    else {
+    else if (stype == ZMQ_CLIENT) {
         flow->send_bot(msg);
         bool ok = flow->recv_bot(msg, m_timeout);
         if (!ok) { return nullptr; }
     }
+#endif
     return flow;
 }
 

@@ -8,6 +8,36 @@ using namespace WireCell;
 
 using namespace std;
 
+void depo_extraction(Log::logptr_t l, Zpb::DepoSink& us)
+{
+    l->info("sending depo1");
+
+    IDepo::pointer depo1 = std::make_shared<SimpleDepo>(6.9,WireCell::Point(0,0,0));
+    bool ok = us(depo1);
+    assert(ok);
+
+    l->info("sending eos");
+    ok = us(nullptr);
+    assert(ok);
+}
+
+void depo_injection(Log::logptr_t l, Zpb::DepoSource& ds)
+{
+
+    l->info("recving depo2");
+
+    IDepo::pointer depo2 = nullptr;
+    bool ok = ds(depo2);
+    assert(ok);
+    assert(depo2);
+
+    IDepo::pointer depo3 = nullptr;
+    l->info("recving eos");
+    ok = ds(depo3);
+    assert(ok);
+    assert(depo3 == nullptr);
+}
+
 int main()
 {
     Log::add_stderr(true, "debug");
@@ -33,38 +63,18 @@ int main()
     cerr << "DepoSink config:\n" << us_cfg << "\n";
     cerr << "DepoSource config:\n" << ds_cfg << "\n";
 
-    l->info("configuring");
-
+    l->info("configuring upstream");
     us.configure(us_cfg);       // binds
+    l->info("configuring downstream");
     ds.configure(ds_cfg);       // configures, waits for us to be online
 
-    // l->debug("sleeping");
-    // sleep(1);
+    l->info("starting threads");
+    std::thread tus(depo_extraction, l, std::ref(us));
+    std::thread tds(depo_injection, l, std::ref(ds));
 
-    l->info("sending depo1");
-
-    IDepo::pointer depo1 = std::make_shared<SimpleDepo>(6.9,WireCell::Point(0,0,0));
-    bool ok = us(depo1);
-    assert(ok);
-
-    l->info("recving depo2");
-
-    IDepo::pointer depo2 = nullptr;
-    ok = ds(depo2);
-    assert(ok);
-    assert(depo2);
-
-    assert(depo1 != depo2);
-    assert(depo1->time() == depo2->time());
-
-    l->info("sending eos");
-    ok = us(nullptr);
-    assert(ok);
-    IDepo::pointer depo3 = nullptr;
-    l->info("recving eos");
-    ok = ds(depo3);
-    assert(ok);
-    assert(depo3 == nullptr);
+    l->info("joining threads");
+    tus.join();
+    tds.join();
 
     l->info("bye");
     return 0;

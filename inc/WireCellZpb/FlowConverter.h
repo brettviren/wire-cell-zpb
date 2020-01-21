@@ -101,14 +101,15 @@ namespace WireCell {
                 if (!m_flow) {
                     THROW(RuntimeError() << errmsg{"failed to make flow"});
                 }
-                if (m_direction == "ingest") {
-                    m_flow->flush_pay();
-                }
-                else {
-                    m_flow->slurp_pay(0);
-                }
             }
-
+            virtual void user_online() {
+                // if (m_direction == "inject") {
+                //     m_flow->flush_pay();
+                // }
+                // else {          // extract
+                //     m_flow->slurp_pay(0);
+                // }
+            }
 
         };
 
