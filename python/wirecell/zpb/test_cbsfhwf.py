@@ -7,8 +7,8 @@ import json
 from zio import Port, Message
 from zio.flow import Flow, Broker
 from pyre.zactor import ZActor
-from factory import Factory
-import wctzpb
+from wirecell.zpb import hdf, pb
+
 from google.protobuf.any_pb2 import Any 
 
 import logging
@@ -40,13 +40,13 @@ def flow_depos(ctx, pipe, nsend, name, address):
     assert(msg)
 
     for count in range(nsend):
-        depo = wctzpb.pb.Depo(ident=count,
-                              pos=wctzpb.pb.Point(x=1,y=2,z=3),
-                              time=100.0,
-                              charge=1000.0,
-                              trackid=12345, pdg=11,
-                              extent_long=9.6,
-                              extent_tran=6.9) 
+        depo = pb.Depo(ident=count,
+                       pos=pb.Point(x=1,y=2,z=3),
+                       time=100.0,
+                       charge=1000.0,
+                       trackid=12345, pdg=11,
+                       extent_long=9.6,
+                       extent_tran=6.9) 
         a = Any()
         a.Pack(depo)
         msg = Message(form='FLOW',seqno=count+1,
@@ -75,8 +75,8 @@ def make_broker(ctx, ruleset, address):
     sport.online()    
 
     log.debug("make factory") 
-    factory = Factory(ctx, ruleset, address,
-                      wargs=(wctzpb.pb, wctzpb.tohdf))
+    factory = hdf.Factory(ctx, ruleset, address,
+                          wargs=(pb, hdf.frompb))
     return Broker(sport, factory)
 
 def test_cbsfhwf():

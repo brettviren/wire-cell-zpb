@@ -6,20 +6,21 @@ import json
 import time
 import random
 import numpy
-from zpbhdf import Writer
-
-from wctzpb import pb, tohdf
+from wirecell.zpb.hdf import Writer, frompb
+from wirecell.zpb import pb
 
 from google.protobuf.any_pb2 import Any 
+
+filename="test_pbhdf.hdf"
 
 def test_pbhdf():
 
     # In a "real" app, this would live off in a server.  The group
     # name would be chosen based on some unique identifier for the
     # flow.
-    fp = h5py.File("hpbhdf.hdf",'w')
+    fp = h5py.File(filename, 'w')
     base = fp.create_group("unique/flow/id")
-    writer = Writer(base, pb, tohdf)
+    writer = Writer(base, pb, frompb)
 
 
     # Here we pretend to be some remote source of ZIO messages

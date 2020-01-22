@@ -13,5 +13,6 @@ setup(
         "zio==0.0.0",
         "h5py",
         "protobuf",
+        "pyparsing",
     ],
 )

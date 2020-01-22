@@ -17,7 +17,7 @@ from zio.flow import objectify, Flow
 from pyre.zactor import ZActor
 from zmq import CLIENT, PUSH, PULL, Poller, POLLIN
 import h5py
-from writer import Writer
+from .writer import Writer
 
 import logging
 log = logging.getLogger(__name__)
