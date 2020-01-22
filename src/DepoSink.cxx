@@ -37,11 +37,11 @@ Zpb::DepoSink::~DepoSink()
 
 void Zpb::DepoSink::user_default_configuration(WireCell::Configuration& cfg) const
 {
-    cfg["credits"] = 10;
+    cfg["credit"] = 10;
 }
 void Zpb::DepoSink::user_configure(const WireCell::Configuration& cfg)
 {
-    int credits = cfg["credits"].asInt();
+    int credit = cfg["credit"].asInt();
     m_flow = make_flow(PORTNAME, "extract", 10);
     if (!m_flow) {
         THROW(RuntimeError() << errmsg{"failed to make flow"});

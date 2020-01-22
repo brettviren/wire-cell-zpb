@@ -82,7 +82,7 @@ namespace WireCell {
             /// False is returned if a recv timeout or other error
             /// occurs.
             bool flow_bot(flowptr_t& flow, const std::string& direction,
-                          int credits = 10, bool serverish = false);
+                          int credit = 10, bool serverish = false);
 
 
             /// Give subclass a chance to add to a configuration

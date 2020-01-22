@@ -218,12 +218,12 @@ Zpb::NodeConfigurable::make_flow(const std::string& portname)
 bool
 Zpb::NodeConfigurable::flow_bot(Zpb::NodeConfigurable::flowptr_t& flow,
                                 const std::string& direction,
-                                int credits, bool serverish)
+                                int credit, bool serverish)
 {
     zio::Message msg("FLOW");
     zio::json fobj = {{"flow","BOT"},
                       {"direction",direction},
-                      {"credits",credits}};
+                      {"credit",credit}};
     msg.set_label(fobj.dump());
 
     if (serverish) {

@@ -20,7 +20,7 @@ namespace WireCell {
             bool m_had_eos{false};
             bool m_did_bot{false};
             bool m_serverish{false};
-            int m_credits{10};
+            int m_credit{10};
         public:
             
             typedef PBDATA pb_type;
@@ -40,7 +40,8 @@ namespace WireCell {
             // Use me as a WCT sink
             virtual bool wct2zpb(const pointer& wctdat) {
                 if (!m_did_bot) {
-                    flow_bot(m_flow, m_direction, m_credits, m_serverish);
+                    bool ok = flow_bot(m_flow, m_direction, m_credit, m_serverish);
+                    if (not ok) return false;
                     m_did_bot = true;
                 }
 
@@ -61,6 +62,8 @@ namespace WireCell {
                     }
                     return true;
                 }
+                // non EOT message resets
+                m_had_eos = false;
 
                 PBDATA out = Zpb::convert(wctdat);
                 zio::message_t pl = pack(out);
@@ -78,7 +81,8 @@ namespace WireCell {
             // Use me as a WCT source
             virtual bool pb2wct(pointer& wctdat) {
                 if (!m_did_bot) {
-                    flow_bot(m_flow, m_direction, m_credits, m_serverish);
+                    bool ok = flow_bot(m_flow, m_direction, m_credit, m_serverish);
+                    if (not ok) return false;
                     m_did_bot = true;
                 }
 
@@ -106,10 +110,10 @@ namespace WireCell {
         private:
 
             virtual void user_default_configuration(Configuration& cfg) const {
-                cfg["credits"] = m_credits;
+                cfg["credit"] = m_credit;
             }
             virtual void user_configure(const Configuration& cfg) {
-                m_credits = get(cfg, "credits", m_credits);
+                m_credit = get(cfg, "credit", m_credit);
                 m_flow = make_flow(m_portname);
                 if (!m_flow) {
                     THROW(RuntimeError() << errmsg{"failed to make flow"});

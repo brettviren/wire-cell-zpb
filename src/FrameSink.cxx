@@ -26,11 +26,11 @@ Zpb::FrameSink::~FrameSink()
 // same intermediate class as this and the next config method will be identical.
 void Zpb::FrameSink::user_default_configuration(WireCell::Configuration& cfg) const
 {
-    cfg["credits"] = 10;
+    cfg["credit"] = 10;
 }
 void Zpb::FrameSink::user_configure(const WireCell::Configuration& cfg)
 {
-    int credits = cfg["credits"].asInt();
+    int credit = cfg["credit"].asInt();
     m_flow = make_flow(PORTNAME);//, "extract", 10);
     if (!m_flow) {
         THROW(RuntimeError() << errmsg{"failed to make flow"});

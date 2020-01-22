@@ -29,13 +29,13 @@ Zpb::DepoSource::~DepoSource()
 
 void Zpb::DepoSource::user_default_configuration(WireCell::Configuration& cfg) const
 {
-    cfg["credits"] = 10;
+    cfg["credit"] = 10;
 }
 
 void Zpb::DepoSource::user_configure(const WireCell::Configuration& cfg)
 {
-    int credits = cfg["credits"].asInt();
-    m_flow = make_flow(PORTNAME, "inject", credits);
+    int credit = cfg["credit"].asInt();
+    m_flow = make_flow(PORTNAME, "inject", credit);
     if (!m_flow) {
         THROW(RuntimeError() << errmsg{"failed to make flow"});
     }

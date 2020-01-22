@@ -10,7 +10,10 @@ using namespace WireCell;
 
 using namespace std;
 
+/// inproc leads to some timing problem not seen with ipc and tpc
 const char* addr = "inproc://test_depozpb";
+//const char* addr = "tcp://127.0.0.1:5678";
+//const char* addr = "ipc://test_depozpb.ipc";
 
 // a very very ugly server
 void server(Log::logptr_t l)
@@ -22,7 +25,20 @@ void server(Log::logptr_t l)
     std::map<uint32_t,uint32_t> rids;
     std::vector<zio::message_t> tosend;
 
+    zmq::poller_t<> poller;
+    poller.add(s, zmq::event_flags::pollin);
+    const auto wait = std::chrono::milliseconds{3000};
+
+    int count = 0;
     while (true) {
+        l->info("server: {} polling", count);
+        std::vector<zmq::poller_event<>> events(1);
+        int rc = poller.wait_all(events, wait);
+        if (rc == 0) {
+            l->info("server: timeout");
+            break;
+        }
+
         zio::message_t msg;
         l->info("server: recv");
         auto res = s.recv(msg);
@@ -32,7 +48,8 @@ void server(Log::logptr_t l)
         zio::Message MSG;
         MSG.decode(msg);
 
-        l->info("server: recvd {}", MSG.prefix().dumps());
+        l->info("server: {} recvd {}", count, MSG.prefix().dumps());
+        ++count;
 
         if (rids.empty()) {
             rids[rid]=0;
@@ -55,6 +72,7 @@ void server(Log::logptr_t l)
             rid = ts.routing_id();
             uint32_t orid = rids[rid];
             ts.set_routing_id(orid);
+            l->info("server: route {} -> {}", rid, orid);
             auto ses = s.send(ts, zio::send_flags::none);
             assert(ses);
         }
@@ -76,16 +94,20 @@ void depo_extraction(Log::logptr_t l)
     l->info("configuring upstream");
     us.configure(us_cfg);
 
+    usleep(100000);
 
     l->info("extract thread: sending depo");
-
     IDepo::pointer depo1 = std::make_shared<SimpleDepo>(6.9,WireCell::Point(0,0,0));
-    bool ok = us(depo1);
-    assert(ok);
+    bool keep_going = us(depo1);
+    assert(keep_going);
 
     l->info("extract thread: sending eos");
-    ok = us(nullptr);
-    assert(ok);
+    keep_going = us(nullptr);
+    assert(keep_going);
+
+    l->info("extract thread: sending 2nd eos as EOT");
+    keep_going = us(nullptr);
+    assert(!keep_going);
 }
 
 void depo_injection(Log::logptr_t l)
@@ -96,24 +118,30 @@ void depo_injection(Log::logptr_t l)
     ds_cfg["ports"]["inject-depos"]["stype"] = ZMQ_CLIENT;
     ds_cfg["ports"]["inject-depos"]["connects"][0] = addr;
 
-
     cerr << "DepoSource config:\n" << ds_cfg << "\n";
 
     l->info("configuring downstream");
     ds.configure(ds_cfg);
 
-    l->info("inject thread: recving depo");
+    usleep(100000);
 
+    l->info("inject thread: recving depo");
     IDepo::pointer depo2 = nullptr;
-    bool ok = ds(depo2);
-    assert(ok);
+    bool keep_going = ds(depo2);
+    assert(keep_going);
     assert(depo2);
 
     IDepo::pointer depo3 = nullptr;
     l->info("inject thread: recving eos");
-    ok = ds(depo3);
-    assert(ok);
+    keep_going = ds(depo3);
+    assert(keep_going);
     assert(depo3 == nullptr);
+
+    IDepo::pointer depo4 = nullptr;
+    l->info("inject thread: recving EOT");
+    keep_going = ds(depo4);
+    assert(!keep_going);
+    assert(depo4 == nullptr);
 }
 
 int main()
@@ -125,7 +153,6 @@ int main()
 
     l->info("starting server thread");
     std::thread ser(server, l);
-    usleep(100000);
 
     l->info("starting client threads");
     std::thread tus(depo_extraction, l);
