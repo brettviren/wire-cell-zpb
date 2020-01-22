@@ -4,8 +4,6 @@
 #include "WireCellIface/IDepoSink.h"
 #include "FlowConverter.h"
 
-//#include <memory>
-
 namespace WireCell {
     namespace Zpb { 
 

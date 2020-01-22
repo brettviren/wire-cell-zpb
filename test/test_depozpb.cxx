@@ -10,10 +10,10 @@ using namespace WireCell;
 
 using namespace std;
 
-/// inproc leads to some timing problem not seen with ipc and tpc
-const char* addr = "inproc://test_depozpb";
+/// inproc fails to recv.  ipc/tcp okay.
+/// const char* addr = "inproc://test_depozpb";
 //const char* addr = "tcp://127.0.0.1:5678";
-//const char* addr = "ipc://test_depozpb.ipc";
+const char* addr = "ipc://test_depozpb.ipc";
 
 // a very very ugly server
 void server(Log::logptr_t l)
