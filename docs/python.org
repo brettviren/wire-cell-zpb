@@ -1,0 +1,69 @@
+#+title: ZPB Python
+
+The Wire-Cell ZPB Python package (~wirecell.zpb~) provides Python
+modules and command line programs which may be used stand-alone or
+with WCT components from the WireCellZpb plugin to the WireCell C++
+Toolkit.
+
+* General usage
+
+  #+begin_example
+  python -m wirecell.zpb --help
+  #+end_example
+
+* File Server
+
+The ZPB file server allows ZIO /data flow protocol/ clients to read
+message from and write messages to files.  Support for a variety of
+file formats are possible with HDF5 and ROOT being the initial
+targets.  The choice of format or formats is independent from the
+clients.
+
+** Attribute rules
+
+The file server is very general and configurable while not posing
+additional requirements on the ZIO data flow clients.  To achieve this
+it "maps" data flows to files by being configured with a set of
+something called /attribute rules/.
+
+A single attribute rule in the set is a data structure provided by
+user configuration with the following items:
+
+- rule :: an S-expression in terms of a set of attributes and
+          operators which should evaluate to a single Boolean value.
+          If *true* then the rule is said to apply as determined stated
+          by the remaining items.
+
+- filepat :: a string which may be interpolated against the set of
+             attributes to form the name of the file to use.
+
+- rw :: a marker that the file shall be read from or written to.
+
+- grouppat :: a string which may be interpolated against the set of
+              attributes in order to form an identifier for the data
+              flow to which this rule applies.
+
+- attr :: A dictionary of additional attributes.
+
+The overall attribute set applied to *rule*, *filepath* and *grouppat* is
+formed from two attributes sets.  The first consists of all attributes
+provided by the /flow object/ held as JSON in the "label" field of the
+prefix header of an initial *BOT* message for a new flow.  The second
+set updates the first and consists of any attributes provided by the
+rule *attr* item.
+
+The *rule* itself is an S-expression (ie, like used in Scheme or LISP
+languages).  For example,
+
+#+begin_src scheme
+  (and (== stream "raw") (== type "frame"))
+#+end_src
+
+In the example, either ~stream~ or ~type~ may be provided by the *BOT*
+message or the *attr* item.
+
+The entire rule set is an ordered sequence.  When a *BOT* message it
+received by the file server it is evaluated against each rule in the
+set.  The first to evaluate as Boolean *true* will be applied to
+servicing that flow.
+
