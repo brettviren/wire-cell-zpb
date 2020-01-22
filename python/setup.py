@@ -14,5 +14,6 @@ setup(
         "h5py",
         "protobuf",
         "pyparsing",
+        "jsonnet",
     ],
 )

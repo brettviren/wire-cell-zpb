@@ -41,6 +41,9 @@ def test():
 
 
     for want, toparse in [
+            (True, "(or (= a 5) (= b 2))"),
+            (True, "(and (eq name 'Manfred') (eq b 2))"),
+            (True, "(and (= name 'Manfred') (or (= a 5) (= b 2)))"),
             (True, "(== a (+ 1 b))"),
             (False, '(== name "Ada")'),
             (True, '(== name "Manfred")'),
@@ -63,6 +66,7 @@ def test():
         result = r.match()
         print (f'"{toparse}" on {params} gives {result}')
         assert(want == result)
+        print ()
 
 
 if '__main__' == __name__:
