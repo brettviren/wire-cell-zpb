@@ -2,16 +2,16 @@
 '''
 Main CLI for wirecell.zpb
 '''
-import json
-from . import jsonnet
-import click
-from rule import Rule           # bv's hacked version
-from . import lispish
 import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s.%(msecs)03d %(levelname)s\t%(message)s',
                     datefmt='%Y-%m-%d %H:%M:%S')
 log = logging.getLogger("zpb")
+
+import json
+from . import jsonnet
+import click
+from . import rules
 
 @click.group("zpb")
 @click.pass_context
@@ -56,34 +56,33 @@ def test_ruleset(ruleset, verbosity, attrs):
     rs = jsonnet.load(ruleset)
     # fixme: move this to a module
     for ind,robj in enumerate(rs):
-        rule_attr = dict(msg_attr)
-        rule_attr.update(robj.get('attr',{}))
-        log.debug(f'rule attributes: {rule_attr}')
-        parser = lispish.parser(rule_attr)
-        sexp = robj['rule']
+        attr = dict(robj.get('attr',{}), **msg_attr)
+        log.debug(f'attr: {attr}')
+        # do parsing
         try:
-            parsed = parser.parseString(sexp)
-        except KeyError as e:
-            log.error(f'missing parameter in rule {ind}: {e}\n\trule: {sexp}\n\tattr: {rule_attr}')
+            parsed = rules.parse(robj, **attr)
+        except Exception as e:
+            log.error(f'parse error "{e}"')
             continue
-        except lispish.ParseException:
-            log.critical(f'parse error with rule:\n{sexp}')
-            raise
-        parsed = parsed[0]
+
+        # do evaluating
+        # can call rules.evaluate() but we want to print extra stuff here
         log.debug(f'parsed expression: {parsed}')
-        expr = Rule(parsed, return_bool = True)
+        expr = rules.Rule(parsed, return_bool = True)
         log.debug(f'rule expression: {expr}')
         tf = expr.match();
+
+        # do string interpolation no the "pat" patterns
         filepat = robj['filepat']
         try:
-            path = filepat.format(**rule_attr)
+            path = filepat.format(**attr)
         except KeyError as e:
             log.error(f'missing parameter: {e}, filepat: "{filepat}"')
             continue
 
         grouppat = robj['grouppat']
         try:
-            group = grouppat.format(**rule_attr)
+            group = grouppat.format(**attr)
         except KeyError as e:
             log.error(f'missing parameter: {e}, grouppat: "{grouppat}"')
             continue
@@ -94,13 +93,17 @@ def test_ruleset(ruleset, verbosity, attrs):
         
 
 @cli.command("file-server")
-@click.option("-r","--ruleset",type=click.Path(),
+@click.option("-r","--ruleset", type=click.Path(),
               help="A file in JSON or Jsonnet format providing the ruleset")
+@click.option("-b","--bind", default="tcp://127.0.0.1:22351",
+              help="An address to which the server shall bind")
 @click.argument("filename", nargs=-1)
 def file_server(filename):
     '''
     Serve files over ZPB/ZIO.
     '''
+
+
     
 def main():
     cli(obj=dict())
