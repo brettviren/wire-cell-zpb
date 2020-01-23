@@ -2,7 +2,7 @@
 
 import rule                     # bv's modified version
 from pyparsing import *
-def make_sexp(params = None):
+def parser(params = None):
 
     params = params or dict()
 
@@ -10,7 +10,7 @@ def make_sexp(params = None):
     FALSE = CaselessKeyword("false").setParseAction(lambda m: False)
     boolean = TRUE | FALSE
 
-    param = Word(alphas +"_", alphanums + '_').setParseAction(lambda m:params.get(m[0],m[0]))
+    param = Word(alphas +"_", alphanums + '_').setParseAction(lambda m:params[m[0]])
     sstring = QuotedString('"').setName("stringliteral")
     dstring = QuotedString("'").setName("stringliteral")
     string = sstring | dstring
@@ -19,7 +19,7 @@ def make_sexp(params = None):
     ops  = ">= <= != > < = == + - * / | & "
     ops += "ge le ne gt lt eq add sub mul div or and"
     operator = oneOf(ops).setName("operator")
-    atom = boolean | param | string | integer | operator
+    atom = boolean | string | integer | operator | param
 
     lp = Suppress("(")
     rp = Suppress(")")
@@ -36,12 +36,19 @@ def dump_parsed(pr):
 def test():
 
     params = dict(a=3,b=2,name="Manfred")
-    sp = make_sexp(params)
+    sp = parser(params)
+
+
+    try:
+        pr = sp.parseString("undefined")
+    except KeyError:
+        pass
+    else:
+        raise RuntimeError("should have gotten an KeyError on 'undefined'")
 
 
     for want, toparse in [
             (True, "(or 0 1)"),
-            (True, "foo"),
             (True, "true"),
             (True, "True"),
             (False, "false"),

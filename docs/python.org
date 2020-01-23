@@ -67,3 +67,45 @@ received by the file server it is evaluated against each rule in the
 set.  The first to evaluate as Boolean *true* will be applied to
 servicing that flow.
 
+** Testing a rule set
+
+An fictional example rule set is provided and may be tested like:
+
+#+begin_example
+  $ python -m wirecell.zpb test-ruleset -r example-ruleset.jsonnet \
+        direction=inject  \
+        jobname=testjob \
+        stream=depos \
+        type=depo
+  2020-01-23 12:54:52.555 INFO	#0 FALSE w testjob.hdf:/foo/depos/depo
+  2020-01-23 12:54:52.556 INFO	#1 TRUE  r testjob.hdf:/bar/depos/depo
+#+end_example
+
+The arguments give attributes that might otherwise be provided by the
+*BOT* message to which this rule set is applied.  The first rule in the
+test fails, second rule succeeds.  The rule set tested is:
+
+#+begin_src jsonnet
+  [
+      {
+          rule: "(and (= direction 'extract') (or (= type 'depo') (= type 'frame')))",
+          rw: "w",
+          filepat: "{jobname}.hdf",
+          grouppat: "{extra}/{stream}/{type}",
+          attr: {extra:"foo"}
+      },
+      {
+          rule: "(and (= direction 'inject') (or (= type 'depo') (= type 'frame')))",
+          rw: "r",
+          filepat: "{jobname}.hdf",
+          grouppat: "{extra}/{stream}/{type}",
+          attr: {extra:"bar"}
+      },
+  ]
+#+end_src
+
+Note the inclusion of the ~extra~ attribute in the ~attr~ field.  It is
+included here in order to demonstrate how the full attribute set is a
+mix of those provided in the rule set and the message.  In this case,
+it would also be possible to "hard-code" the ~extra~ value into the
+~grouppat~.
