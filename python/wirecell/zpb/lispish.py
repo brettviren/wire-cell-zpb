@@ -1,34 +1,33 @@
 #!/usr/bin/env python3
-import pyparsing as pp
-import rule                     # bv's modified version
 
-def sexp(params=None):
-    '''Return an s-expression parser'''
+import rule                     # bv's modified version
+from pyparsing import *
+def make_sexp(params = None):
+
     params = params or dict()
-    dstring = pp.QuotedString('"').setName("stringliteral")
-    sstring = pp.QuotedString("'").setName("stringliteral")
-    param = pp.Word(pp.alphas +"_", pp.alphanums + '_').setParseAction(lambda m:params.get(m[0],m[0]))
-    integer = pp.Word(pp.nums).setParseAction(lambda m:int(m[0]))
+
+    TRUE = CaselessKeyword("true").setParseAction(lambda m: True)
+    FALSE = CaselessKeyword("false").setParseAction(lambda m: False)
+    boolean = TRUE | FALSE
+
+    param = Word(alphas +"_", alphanums + '_').setParseAction(lambda m:params.get(m[0],m[0]))
+    sstring = QuotedString('"').setName("stringliteral")
+    dstring = QuotedString("'").setName("stringliteral")
+    string = sstring | dstring
+    integer = Word(nums).setParseAction(lambda m:int(m[0]))
+
     ops  = ">= <= != > < = == + - * / | & "
     ops += "ge le ne gt lt eq add sub mul div or and"
-    #print (ops)
-    operator = pp.oneOf(ops).setName("operator")
-    arguments = pp.ZeroOrMore(param | integer | sstring | dstring).setName("arguments")
-    content = operator + arguments
+    operator = oneOf(ops).setName("operator")
+    atom = boolean | param | string | integer | operator
 
+    lp = Suppress("(")
+    rp = Suppress(")")
+    sexp = Forward()
+    func = Group( lp + ZeroOrMore(sexp) + rp )
+    sexp << ( atom | func )
+    return sexp
 
-    # expr = pp.OneOrMore(pp.nestedExpr("(",")",
-    #                                   content=content))
-
-    lp = pp.Suppress("(")
-    rp = pp.Suppress(")")
-    ret = pp.Forward()
-    #sexp_list = pp.Forward()
-    sexp_list = pp.Group(lp + content + rp)
-    #sexp_list << (lp + content + rp)
-    ret << (lp + pp.ZeroOrMore(content | sexp_list) + rp)
-    #ret = pp.Group(lp + pp.ZeroOrMore(content | sexp_list) + rp)
-    return ret
 
 def dump_parsed(pr):
     for one in pr:
@@ -37,10 +36,16 @@ def dump_parsed(pr):
 def test():
 
     params = dict(a=3,b=2,name="Manfred")
-    sp = sexp(params)
+    sp = make_sexp(params)
 
 
     for want, toparse in [
+            (True, "(or 0 1)"),
+            (True, "foo"),
+            (True, "true"),
+            (True, "True"),
+            (False, "false"),
+            (True, "(or (= a 5) (= b 2))"),
             (True, "(or (= a 5) (= b 2))"),
             (True, "(and (eq name 'Manfred') (eq b 2))"),
             (True, "(and (= name 'Manfred') (or (= a 5) (= b 2)))"),
@@ -50,21 +55,27 @@ def test():
             (True, "(== name 'Manfred')"),
             (True, '(!= name "Ada")'),
             (False, '(!= name "Manfred")'),
-            (3, '(| a b)'),
+            (True, '(| a b)'),
             (True, '(| (< a b) (> a b))'),
             (True, '(& (= a 3) (= 2 b))'),
             (True, '(and (== a 3) (eq 2 b))'),
             (True, '(!= name "name")'),
             ]:
 
-        pr = sp.parseString(toparse)
+        pr = sp.parseString(toparse, parseAll=True)
         #if len(pr) == 1 and len(pr[0]) == 1:
-        #pr = pr[0]
-        print ("parsed:",pr)
-        r = rule.Rule(pr)
-        print("rule:",r)
-        result = r.match()
-        print (f'"{toparse}" on {params} gives {result}')
+        print (pr)
+        pr = pr[0]
+        print ("parsed:",type(pr), pr)
+        if isinstance(pr, ParseResults):
+            r = rule.Rule(pr, return_bool=True)
+            print("rule:",r)
+            result = r.match()
+            print (f'Rule result: "{toparse}" on {params} gives {result}')
+        else:
+            result = True if pr else False
+            print (f'Literal result: "{toparse}" on {params} gives {result}')
+            
         assert(want == result)
         print ()
 
