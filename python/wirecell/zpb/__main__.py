@@ -97,12 +97,56 @@ def test_ruleset(ruleset, verbosity, attrs):
               help="A file in JSON or Jsonnet format providing the ruleset")
 @click.option("-b","--bind", default="tcp://127.0.0.1:22351",
               help="An address to which the server shall bind")
-@click.argument("filename", nargs=-1)
-def file_server(filename):
+@click.option("-f","--format", default="hdf", type=click.Choice(["hdf"]),
+              help="File format")
+@click.option("-n","--name", default="zpbfiles",
+              help="The Zyre node name for the server")
+@click.option("-p","--port", default="flow",
+              help="The port name for the server socket")
+@click.option("-v","--verbosity", default="info",
+              help="Set logging level (debug, info, warning, error, critical)")
+def file_server(ruleset, bind, format, name, port, verbosity):
     '''
     Serve files over ZPB/ZIO.
     '''
+    import zmq
+    from zio import Port, Message, Node
+    from zio.flow.broker import Broker
+    from .factory import Ruleset as Factory
+    from . import pb as pbmod
 
+    # for now we only support HDF
+    from .hdf import writer, reader, frompb
+    assert(format == "hdf")
+
+    log.level = getattr(logging, verbosity.upper(), "INFO")
+
+    # fixme: is it really needed to create a common ctx?
+    ctx = zmq.Context()
+    factory = Factory(ctx, ruleset, 
+                      wactors=((writer.file_handler,
+                                "inproc://hdfwriter{port}", (pbmod, frompb)),
+                               (writer.client_handler,
+                                bind)),
+                      ractors=(reader.file_handler,
+                               reader.client_handler))
+
+    node = Node(name)
+    sport = node.port(port, zmq.SERVER)
+    sport.bind(bind)
+    sport.do_binds()
+    sport.online()    
+    log.info(f'broker {name}:{port} online at {bind}')
+
+    broker = Broker(sport, factory)
+
+    log.info(f'broker {name} entering loop')
+    while True:
+        ok = broker.poll(1000)
+        if ok is None:
+            log.debug(f'broker {name} is lonely')
+
+    broker.stop()
 
     
 def main():
