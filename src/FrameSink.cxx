@@ -7,11 +7,8 @@ WIRECELL_FACTORY(ZpbFrameSink, WireCell::Zpb::FrameSink,
 
 using namespace WireCell;
 
-const std::string PORTNAME = "output";
-
 Zpb::FrameSink::FrameSink()
-    : FlowConverter("ZpbFrameSink", "wct-zpb-frame-sink",
-                    "extract", "extract-frames")
+    : FlowConverter("extract")
 {
 }
 

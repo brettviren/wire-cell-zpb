@@ -8,8 +8,7 @@ WIRECELL_FACTORY(ZpbDepoSink, WireCell::Zpb::DepoSink,
 using namespace WireCell;
 
 Zpb::DepoSink::DepoSink()
-    : FlowConverter<IDepo, wctzpb::Depo>("ZpbDepoSink","wct-zpb-depo-sink",
-                                         "extract","extract-depos")
+    : FlowConverter<IDepo, wctzpb::Depo>("extract")
 {
 }
 

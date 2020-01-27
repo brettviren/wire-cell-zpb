@@ -21,6 +21,7 @@ from zio.flow import objectify, Flow
 from pyre.zactor import ZActor
 from zmq import CLIENT, PUSH, PULL, Poller, POLLIN
 import h5py
+from ..util import message_to_dict
 
 from google.protobuf.any_pb2 import Any 
 import logging
@@ -89,17 +90,6 @@ class Writer:
             tohdf = getattr(self.tohdf, type_name)
             slot = seq.create_group(str(index))
             tohdf(pbobj, slot)
-
-# fixme: move up
-def message_to_dict(msg):
-    '''
-    Return a simple dictionary of message header info.
-    '''
-    d = objectify(msg)
-    d['origin'] = msg.origin
-    d['granule'] = msg.granule
-    d['seqno'] = msg.seqno
-    return d
 
 def file_handler(ctx, pipe, filename, addrpat, wargs):
     '''An actor that marshals messages from socket to file.

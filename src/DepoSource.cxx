@@ -7,11 +7,8 @@ WIRECELL_FACTORY(ZpbDepoSource, WireCell::Zpb::DepoSource,
 
 using namespace WireCell;
 
-const std::string PORTNAME = "input";
-
 Zpb::DepoSource::DepoSource()
-    : FlowConverter("ZpbDepoSource", "wct-zpb-depo-source",
-                    "inject", "inject-depos")
+    : FlowConverter("inject")
 {
 }
 

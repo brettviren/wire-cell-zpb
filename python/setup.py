@@ -16,4 +16,9 @@ setup(
         "pyparsing",
         "jsonnet",
     ],
+    entry_points = dict(
+        console_scripts = [
+            'wirecell-zpb = wirecell.zpb.__main__:main',
+        ]
+    ),
 )

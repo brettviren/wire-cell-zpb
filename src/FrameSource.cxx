@@ -7,11 +7,8 @@ WIRECELL_FACTORY(ZpbFrameSource, WireCell::Zpb::FrameSource,
 
 using namespace WireCell;
 
-const std::string PORTNAME = "input";
-
 Zpb::FrameSource::FrameSource()
-    : FlowConverter("ZpbFrameSource", "wct-zpb-frame-source",
-                    "inject", "inject-frames")
+    : FlowConverter("inject")
 {
 }
 

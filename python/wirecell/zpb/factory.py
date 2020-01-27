@@ -3,6 +3,12 @@
 ZBP factories are used to service client flows.
 '''
 
+from .util import message_to_dict
+from . import rules
+
+import logging
+log = logging.getLogger("zpb")
+
 def wash_one(t):
     return t if isinstance(t,tuple) else (t,())
 def wash(tt):
@@ -129,6 +135,7 @@ class Ruleset:
         attr = message_to_dict(bot)
         
         for maybe in self.ruleset:
+            log.debug(f'check rule: "{maybe}"')
             parsed = rules.parse(maybe, **attr)
             log.debug ("parsed:",parsed)
             tf = rules.evaluate(parsed)

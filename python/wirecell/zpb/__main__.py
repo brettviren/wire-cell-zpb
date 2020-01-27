@@ -93,7 +93,7 @@ def test_ruleset(ruleset, verbosity, attrs):
         
 
 @cli.command("file-server")
-@click.option("-r","--ruleset", type=click.Path(),
+@click.option("-r","--ruleset", type=click.Path(), required=True,
               help="A file in JSON or Jsonnet format providing the ruleset")
 @click.option("-b","--bind", default="tcp://127.0.0.1:22351",
               help="An address to which the server shall bind")
@@ -114,12 +114,15 @@ def file_server(ruleset, bind, format, name, port, verbosity):
     from zio.flow.broker import Broker
     from .factory import Ruleset as Factory
     from . import pb as pbmod
+    from .jsonnet import load as jsonnet_load
 
     # for now we only support HDF
     from .hdf import writer, reader, frompb
     assert(format == "hdf")
 
     log.level = getattr(logging, verbosity.upper(), "INFO")
+
+    ruleset = jsonnet_load(ruleset)
 
     # fixme: is it really needed to create a common ctx?
     ctx = zmq.Context()
@@ -134,17 +137,18 @@ def file_server(ruleset, bind, format, name, port, verbosity):
     node = Node(name)
     sport = node.port(port, zmq.SERVER)
     sport.bind(bind)
-    sport.do_binds()
-    sport.online()    
+    node.online()    
     log.info(f'broker {name}:{port} online at {bind}')
 
     broker = Broker(sport, factory)
 
     log.info(f'broker {name} entering loop')
     while True:
-        ok = broker.poll(1000)
+        ok = broker.poll(10000)
         if ok is None:
+            node.peer.drain()
             log.debug(f'broker {name} is lonely')
+            log.debug(node.peer.peers)
 
     broker.stop()
 

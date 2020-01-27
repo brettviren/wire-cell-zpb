@@ -15,9 +15,9 @@ def parse(rule_object, **params):
     params.update(rule_object.get('attr',{}))
     log.debug(f'rule attributes: {params}')
     parser = lispish.parser(params)
-    sexp = rule_object['rule']
+    scode = rule_object['rule']
     try:
-        parsed = parser.parseString(sexp)
+        parsed = parser.parseString(scode)
     except KeyError as e:
         log.error(f'missing parameter in rule {ind}: {e}\n\trule: {sexp}\n\tattr: {params}')
         raise 
