@@ -6,4 +6,5 @@ executing WCT graph and external entities.  The transport is provided
 using [[https://github.com/brettviren/zio][ZIO]] (functionality on top of ZeroMQ technologies) and the data
 WCT is serialized as protobuf objects.
 
-See [[file:docs/index.org][documentation]] for more information.
+See the [[file:docs/index.org][documentation]] directory for more
+information or online at https://brettviren.github.io/wire-cell-zpb.
