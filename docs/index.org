@@ -1,4 +1,9 @@
-#+title: Wire-Cell Toolkit ZeroMQ/protobuf interface to ZIO
+#+title: ZPB - Protobuf based interface between Wire-Cell Toolkit and ZIO
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org1.css" />
+#+options: toc:nil html-postamble:nil
+
+#+include: nav.org
 
 This package provides the ~WireCellZpb~ plugin library to the Wire-Cell
 Toolkit.  It gives a mechanism to extract or inject data between an
@@ -6,4 +11,3 @@ executing WCT graph and external entities.  The transport is provided
 using [[https://github.com/brettviren/zio][ZIO]] (functionality on top of ZeroMQ technologies) and the data
 WCT is serialized as protobuf objects.
 
-See [[file:docs/index.org][documentation]] for more information.

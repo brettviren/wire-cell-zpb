@@ -1,4 +1,6 @@
 #+title: Wire-Cell Toolkit ZPB
+#+setupfile: setup.org
+#+include: nav.org
 
 ZIO transport of WCT ~IData~ objects using protocol buffers.
 

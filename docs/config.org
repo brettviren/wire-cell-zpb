@@ -1,0 +1,17 @@
+#+title: ZPB Configuration
+#+setupfile: setup.org
+#+include: nav.org
+
+Like all WCT plugins you can dump the default configurations of the
+components ZPB provides with:
+
+#+begin_example
+  $ wire-cell -a ConfigDumper -p WireCellApps -p WireCellZpb| json_pp
+#+end_example
+
+The ZPB components have common configuration.
+
+- tbd.
+
+In addition to the above WCT configuration, the ZPB file server
+requires configuration.  See [[file:server.org][server]].

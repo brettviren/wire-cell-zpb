@@ -1,14 +1,26 @@
-#+title: ZPB Python
+#+title: ZPB Server
+#+setupfile: setup.org
+#+include: nav.org
 
 The Wire-Cell ZPB Python package (~wirecell.zpb~) provides Python
 modules and command line programs which may be used stand-alone or
 with WCT components from the WireCellZpb plugin to the WireCell C++
-Toolkit.
+Toolkit.  The main program it provides is the ZPB file server.
 
 * General usage
 
+The ZPB Python modules have command line interface accessible via one
+or the other of:
+
   #+begin_example
-  python -m wirecell.zpb --help
+  $ python -m wirecell.zpb --help
+  $ wirecell-zpb --help
+  #+end_example
+
+The file server:
+
+  #+begin_example
+  $ wirecell-zpb file-server --help
   #+end_example
 
 * File Server
@@ -21,13 +33,19 @@ clients.
 
 ** Attribute rules
 
-The file server is very general and configurable while not posing
-additional requirements on the ZIO data flow clients.  To achieve this
-it "maps" data flows to files by being configured with a set of
-something called /attribute rules/.
+The file server brings together ZIO data flow clients with file
+handlers in a decoupled way so that clients are not directly tied to
+the details of their files It does this by /mapping/ data flows to
+files with a set /attribute rules/.  
 
-A single attribute rule in the set is a data structure provided by
-user configuration with the following items:
+A set of rules are given to server in a JSON or Jsonnet file:
+
+  #+begin_example
+  $ wirecell-zpb file-server -r myruleset.jsonnet [...]
+  #+end_example
+
+A single /attribute rule/ in the set is a data structure provided by
+user configuration and has these elements:
 
 - rule :: an S-expression in terms of a set of attributes and
           operators which should evaluate to a single Boolean value.
@@ -62,17 +80,20 @@ languages).  For example,
 In the example, either ~stream~ or ~type~ may be provided by the *BOT*
 message or the *attr* item.
 
-The entire rule set is an ordered sequence.  When a *BOT* message it
+The entire rule set is an ordered sequence.  When a *BOT* message is
 received by the file server it is evaluated against each rule in the
 set.  The first to evaluate as Boolean *true* will be applied to
 servicing that flow.
 
 ** Testing a rule set
 
-An fictional example rule set is provided and may be tested like:
+Rulesets may be elaborate and deepened on attributes that are supplied
+only by the *BOT* message.  To assist in writing valid rule sets they
+may be easily tested with the provided command:
 
 #+begin_example
-  $ python -m wirecell.zpb test-ruleset -r example-ruleset.jsonnet \
+  $ wirecell-zpb test-ruleset \
+      -r example-ruleset.jsonnet \
         direction=inject  \
         jobname=testjob \
         stream=depos \
@@ -82,20 +103,28 @@ An fictional example rule set is provided and may be tested like:
 #+end_example
 
 The arguments give attributes that might otherwise be provided by the
-*BOT* message to which this rule set is applied.  The first rule in the
-test fails, second rule succeeds.  The rule set tested is:
+*BOT* message if this rule set were applied in the file server.  In
+this example, the first rule in the test fails against the provided
+attributes while the second rule succeeds.  The rule set tested in
+this example, expressed as Jsonnet, is:
 
 #+begin_src jsonnet
   [
       {
-          rule: "(and (= direction 'extract') (or (= type 'depo') (= type 'frame')))",
+          rule: |||
+              (and (= direction 'extract')
+               (or (= type 'depo') (= type 'frame')))
+          |||,
           rw: "w",
           filepat: "{jobname}.hdf",
           grouppat: "{extra}/{stream}/{type}",
           attr: {extra:"foo"}
       },
       {
-          rule: "(and (= direction 'inject') (or (= type 'depo') (= type 'frame')))",
+          rule: |||
+              (and (= direction 'inject')
+               (or (= type 'depo') (= type 'frame')))
+          |||,
           rw: "r",
           filepat: "{jobname}.hdf",
           grouppat: "{extra}/{stream}/{type}",
@@ -104,8 +133,29 @@ test fails, second rule succeeds.  The rule set tested is:
   ]
 #+end_src
 
-Note the inclusion of the ~extra~ attribute in the ~attr~ field.  It is
-included here in order to demonstrate how the full attribute set is a
-mix of those provided in the rule set and the message.  In this case,
-it would also be possible to "hard-code" the ~extra~ value into the
-~grouppat~.
+Note the inclusion of the ~extra~ attribute in the ~attr~ field.  It
+is included here in order to demonstrate how the full attribute set is
+a mix of those provided in the rule set and the message (or command
+line in the ~test-ruleset~ command).  In this simple case, it would
+also be possible to "hard-code" the ~extra~ value into the ~grouppat~.
+
+** Example run
+
+Run file server
+
+#+begin_example
+  $ wirecell-zpb file-server \
+     -n zpbfiles -p flow -v debug \
+     -b tcp://127.0.0.1:5678 \
+     -r test/test_depos_extract_ruleset.jsonnet
+#+end_example
+
+and the WCT job:
+
+#+begin_example
+  $ wire-cell -l stdout -L debug \
+      -c test/test_depos_extract.jsonnet
+#+end_example
+
+Note, start order doesn't matter, but there are timeouts that may bite.
+

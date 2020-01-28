@@ -1,0 +1,15 @@
+#+title: ZPB Installation
+#+setupfile: setup.org
+#+include: nav.org
+
+This package is built using WCT's ~wcb~ Waf-based build tool.
+
+#+begin_example
+  $ wcb configure --prefix=/path/to/install
+  $ wcb --notests install
+  $ wcb --alltests
+#+end_example
+
+External dependencies, including Wire-Cell Toolkit may be
+auto-detected or you may provide hints.  Use ~wcb --help~ for details.
+
