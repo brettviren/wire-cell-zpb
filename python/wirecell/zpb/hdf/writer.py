@@ -65,7 +65,8 @@ class Writer:
         if seq is None:         # as it should be
             seq = self.group.create_group(gn)
         else:
-            log.warning(f'HDF5 writer reusing existing group {gn}')
+            log.error(f'HDF5 writer cowardly refusing to use existing group {gn}')
+            return
         seq.attrs["origin"] = msg.origin
         seq.attrs["granule"] = msg.granule
         for k,v in fobj.items():

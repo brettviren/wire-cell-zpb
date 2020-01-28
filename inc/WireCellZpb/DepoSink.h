@@ -14,7 +14,6 @@ namespace WireCell {
             DepoSink();
 
             virtual bool operator()(const WireCell::IDepo::pointer& wctdat);
-
         };
     }
 }

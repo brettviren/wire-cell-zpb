@@ -58,33 +58,42 @@ def test_ruleset(ruleset, verbosity, attrs):
     for ind,robj in enumerate(rs):
         attr = dict(robj.get('attr',{}), **msg_attr)
         log.debug(f'attr: {attr}')
+
+        def dump(errtype, err):
+            log.error(f'{errtype} "{err}"')
+            log.error('\n%s' % (robj['rule'],))
+            log.error('\n%s' % (robj['attr'],))
+            log.error('\n%s' % (attr,))
+            
+
         # do parsing
         try:
             parsed = rules.parse(robj, **attr)
-        except Exception as e:
-            log.error(f'parse error "{e}"')
+        except KeyError as ke:
+            dump("key error", ke)
             continue
 
         # do evaluating
         # can call rules.evaluate() but we want to print extra stuff here
         log.debug(f'parsed expression: {parsed}')
-        expr = rules.Rule(parsed, return_bool = True)
+        expr = rules.Rule(parsed) #, return_bool = True)
         log.debug(f'rule expression: {expr}')
         tf = expr.match();
+        log.debug(f'rule evaluation: {tf}')
 
         # do string interpolation no the "pat" patterns
         filepat = robj['filepat']
         try:
             path = filepat.format(**attr)
-        except KeyError as e:
-            log.error(f'missing parameter: {e}, filepat: "{filepat}"')
+        except KeyError as ke:
+            dump(f'key error "{filepat}"', ke)
             continue
 
         grouppat = robj['grouppat']
         try:
             group = grouppat.format(**attr)
-        except KeyError as e:
-            log.error(f'missing parameter: {e}, grouppat: "{grouppat}"')
+        except KeyError as ke:
+            dump(f'key error "{grouppat}"', ke)
             continue
 
         rw = robj['rw']
@@ -128,9 +137,9 @@ def file_server(ruleset, bind, format, name, port, verbosity):
     ctx = zmq.Context()
     factory = Factory(ctx, ruleset, 
                       wactors=((writer.file_handler,
-                                "inproc://hdfwriter{port}", (pbmod, frompb)),
+                                ("inproc://hdfwriter{port}", (pbmod, frompb))),
                                (writer.client_handler,
-                                bind)),
+                                (bind,))),
                       ractors=(reader.file_handler,
                                reader.client_handler))
 

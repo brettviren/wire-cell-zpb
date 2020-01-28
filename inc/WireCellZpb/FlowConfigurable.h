@@ -13,6 +13,7 @@
 #define WIRECELLZPB_FLOWCONFIGURABLE
 
 #include "WireCellIface/IConfigurable.h"
+#include "WireCellIface/ITerminal.h"
 #include "WireCellUtil/Logging.h"
 #include "zio/node.hpp"
 #include "zio/flow.hpp"
@@ -23,7 +24,8 @@
 namespace WireCell {
     namespace Zpb {
 
-        class FlowConfigurable : public WireCell::IConfigurable {
+        class FlowConfigurable : public WireCell::IConfigurable,
+                                 public WireCell::ITerminal {
         public:
 
             FlowConfigurable(const std::string& direction,
@@ -33,6 +35,8 @@ namespace WireCell {
             virtual WireCell::Configuration default_configuration() const;
             virtual void configure(const WireCell::Configuration& config);
             
+            virtual void finalize();
+
         protected:
             zio::Node m_node;
             int m_timeout{1000}, m_credit{10};

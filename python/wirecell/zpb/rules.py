@@ -19,10 +19,10 @@ def parse(rule_object, **params):
     try:
         parsed = parser.parseString(scode)
     except KeyError as e:
-        log.error(f'missing parameter in rule {ind}: {e}\n\trule: {sexp}\n\tattr: {params}')
+        log.error(f'key error "{scode}": "{e}"')
         raise 
     except lispish.ParseException:
-        log.error(f'parse error with rule:\n{sexp}')
+        log.error(f'parse error with rule:\n{scode}')
         raise
     return parsed[0]
 

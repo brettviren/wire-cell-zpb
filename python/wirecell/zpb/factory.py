@@ -2,12 +2,12 @@
 '''
 ZBP factories are used to service client flows.
 '''
+from pyre.zactor import ZActor
+import logging
+log = logging.getLogger("zpb")
 
 from .util import message_to_dict
 from . import rules
-
-import logging
-log = logging.getLogger("zpb")
 
 def wash_one(t):
     return t if isinstance(t,tuple) else (t,())
@@ -134,10 +134,13 @@ class Ruleset:
         '''
         attr = message_to_dict(bot)
         
+        cid = attr['cid']
+        log.info('factory Ruleset called %d, have %d rules' % (
+            (cid, len(self.ruleset))))
         for maybe in self.ruleset:
             log.debug(f'check rule: "{maybe}"')
             parsed = rules.parse(maybe, **attr)
-            log.debug ("parsed:",parsed)
+            log.debug (f'parsed: {parsed}')
             tf = rules.evaluate(parsed)
             if not tf:
                 log.debug ("rule does not apply")
@@ -156,6 +159,7 @@ class Ruleset:
             continue
 
     def launch_read(self, filename, bot, rule):
+        raise RuntimeError("reading not yet implemented")
         pass
 
     def launch_write(self, filename, bot, rule):

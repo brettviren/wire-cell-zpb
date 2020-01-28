@@ -15,6 +15,7 @@ Zpb::FlowConfigurable::FlowConfigurable(const std::string& direction,
 
 Zpb::FlowConfigurable::~FlowConfigurable()
 {
+    l->info("FlowConfigurable destroying node");
     m_node.offline();
 }
 
@@ -162,7 +163,6 @@ bool Zpb::FlowConfigurable::pre_flow()
     if (m_did_bot) {
         return true;
     }
-    m_did_bot = true;
 
     const std::string nick = m_node.nick();
 
@@ -202,8 +202,8 @@ bool Zpb::FlowConfigurable::pre_flow()
         m_flow->flush_pay();
     }
 
+    m_did_bot = true;
     return true;
-
 }
 
 zio::message_t Zpb::FlowConfigurable::pack(::google::protobuf::Message& msg)
@@ -223,4 +223,13 @@ void Zpb::FlowConfigurable::unpack(const zio::message_t& spmsg,
     wctzpb::Payload pbpl;
     pbpl.ParseFromArray(spmsg.data(), spmsg.size());
     pbpl.objects(0).UnpackTo(&pbmsg);
+}
+
+
+void Zpb::FlowConfigurable::finalize()
+{
+    const std::string nick = m_node.nick();
+    l->debug("node {}: FINALIZE", nick);
+    m_node.offline();
+    m_flow = nullptr;
 }

@@ -3,17 +3,25 @@
 
 [
     {
-        rule: "(and (= direction 'extract') (or (= dtype 'depo') (= dtype 'frame')))",
-        rw: "w",
+        rule: |||
+            (and
+             (eq direction 'extract')
+             (or (eq dtype 'wctzpb.Depo') (eq dtype 'wctzpb.Frame')))
+        |||,
+        rw: "r",             // direction is w.r.t. file point of view
         filepat: "{jobname}.hdf",
-        grouppat: "{extra}/{stream}/{dtype}",
-        attr: {extra:"foo"}
+        grouppat: "{extra}/{stream}",
+        attr: {extra:"foo"},
     },
     {
-        rule: "(and (= direction 'inject') (or (= dtype 'depo') (= dtype 'frame')))",
-        rw: "r",
+        rule: |||
+            (and
+             (eq direction 'inject')
+             (or (eq dtype 'wctzpb.Depo') (eq dtype 'wctzpb.Frame')))
+        |||,
+        rw: "w",             // direction is w.r.t. file point of view
         filepat: "{jobname}.hdf",
-        grouppat: "{extra}/{stream}/{dtype}",
+        grouppat: "{extra}/{stream}",
         attr: {extra:"bar"}
     },
 ]

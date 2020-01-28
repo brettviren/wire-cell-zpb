@@ -1,12 +1,21 @@
 local wc = import "wirecell.jsonnet";
 local zmq = import "zmq.jsonnet";
 local common = import "test_depos_common.jsonnet";
+
+//local engine = "TbbFlow";
+local engine = "Pgrapher";
+
+local engine_pi =
+    if engine == "Pgrapher"
+    then "WireCellPgraph"
+    else "WireCellTbb";
+
 [
     {
         type: "wire-cell",
         data: {
-            plugins: ["WireCellGen","WireCellApps", "WireCellTbb", "WireCellZpb"],
-            apps: ["TbbFlow"]
+            plugins: ["WireCellGen","WireCellApps", engine_pi, "WireCellZpb"],
+            apps: [engine]
         }
     },
 
@@ -34,7 +43,8 @@ local common = import "test_depos_common.jsonnet";
     {
         type:"ZpbDepoSink",
         data: {
-            nick: "depogobbler",
+            nodename: "depogobbler",
+            origin: 42,
             timeout: 10000,
             headers: {
                 greeting: "hello world" // just to show
@@ -42,26 +52,27 @@ local common = import "test_depos_common.jsonnet";
             attributes: {       // added to BOT's flow object
                 jobname: "test-depos",
                 stream: "depos",
-                dtype: "Depo"
             },
-            ports: [ {
-                name:"extract-depos",
-                connects: [ {
-                    // Use Zyre to find server by node/port names.
-                    // wirecell-zpb file-server -n zpbfiles -p flow [...]
-                    nodename: "zpbfiles",
-                    portname: "flow"
-                }],
-            } ],
+            connects: [
+                "tcp://127.0.0.1:5678",
+                // {
+                // // Use Zyre to find server by node/port names.
+                // // wirecell-zpb file-server -n zpbfiles -p flow [...]
+                // nodename: "zpbfiles",
+                // portname: "flow"
+                // }
+            ],
         }
     },
 
     {
-        type: "TbbFlow",
+        type: engine,
         data: {
             edges: [
-
-                { tail: { node: "TrackDepos", port: 0},    head: { node: "ZpbDepoSink", port: 0} },
+                {
+                    tail: { node: "TrackDepos", port: 0},
+                    head: { node: "ZpbDepoSink", port: 0}
+                },
             ]
         }
     },
