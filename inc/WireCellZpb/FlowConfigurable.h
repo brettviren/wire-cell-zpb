@@ -55,7 +55,9 @@ namespace WireCell {
             flowptr_t m_flow;
 
             /// Subclass must call this before any actual flow.  It is
-            /// safe to call at the top of each execution.
+            /// safe to call at the top of each execution.  If it
+            /// returns false, no flow is possible.  The m_flow will
+            /// be invalid.
             bool pre_flow();
 
             /// Give subclass a chance to add to a configuration

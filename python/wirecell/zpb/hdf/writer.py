@@ -66,6 +66,7 @@ class Writer:
             seq = self.group.create_group(gn)
         else:
             log.error(f'HDF5 writer cowardly refusing to use existing group {gn}')
+            log.error(f'{msg}')
             return
         seq.attrs["origin"] = msg.origin
         seq.attrs["granule"] = msg.granule
@@ -233,6 +234,7 @@ def client_handler(ctx, pipe, bot, rule_object, writer_addr, broker_addr):
 
             msg = flow.get()
             if not msg:
+                log.debug("write_handler: flow stalled")
                 flow.send_eot()
                 # fixme: send an EOT also to push socket?.
                 break

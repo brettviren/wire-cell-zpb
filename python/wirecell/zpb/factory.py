@@ -151,16 +151,14 @@ class Ruleset:
             log.debug(f'{filename} ({rw})')
 
             if rw == 'r':
-                self.launch_read(filename, bot, maybe)
-                return
+                return self.launch_read(filename, bot, maybe)
             if rw == 'w':
-                self.launch_write(filename, bot, maybe)
-                return
+                return self.launch_write(filename, bot, maybe)
+            log.debug('rule has no "rw" attribute')
             continue
 
     def launch_read(self, filename, bot, rule):
         raise RuntimeError("reading not yet implemented")
-        pass
 
     def launch_write(self, filename, bot, rule):
 

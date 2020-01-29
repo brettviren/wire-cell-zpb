@@ -163,6 +163,7 @@ bool Zpb::FlowConfigurable::pre_flow()
     if (m_did_bot) {
         return true;
     }
+    m_did_bot = true;           // call once
 
     const std::string nick = m_node.nick();
 
@@ -176,7 +177,9 @@ bool Zpb::FlowConfigurable::pre_flow()
         l->debug("node {}: serverish BOT recv", nick);
         bool ok = m_flow->recv_bot(msg, m_timeout);
         if (!ok) {
-            l->warn("node {}: serverish BOT recv timeout", nick);
+            l->warn("node {}: serverish BOT recv timeout ({})",
+                    nick, m_timeout);
+            m_flow = nullptr;
             return false;
         }
         l->debug("node {}: serverish BOT send", nick);
@@ -188,7 +191,9 @@ bool Zpb::FlowConfigurable::pre_flow()
         l->debug("node {}: clientish BOT recv", nick);
         bool ok = m_flow->recv_bot(msg, m_timeout);
         if (!ok) {
-            l->warn("node {}: clientish BOT recv timeout", nick);
+            l->warn("node {}: clientish BOT recv timeout ({})",
+                    nick, m_timeout);
+            m_flow = nullptr;
             return false;
         }
     }
@@ -202,7 +207,6 @@ bool Zpb::FlowConfigurable::pre_flow()
         m_flow->flush_pay();
     }
 
-    m_did_bot = true;
     return true;
 }
 
@@ -230,6 +234,13 @@ void Zpb::FlowConfigurable::finalize()
 {
     const std::string nick = m_node.nick();
     l->debug("node {}: FINALIZE", nick);
+    if (m_flow) {
+        zio::Message msg;
+        l->debug("node {}: send EOT", nick);
+        m_flow->send_eot(msg);
+        l->debug("node {}: recv EOT", nick);
+        m_flow->recv_eot(msg, m_timeout);
+    }
     m_node.offline();
     m_flow = nullptr;
 }

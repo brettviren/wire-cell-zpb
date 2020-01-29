@@ -32,15 +32,16 @@ namespace WireCell {
 
             // Use me as a WCT sink / ZIO flow extraction
             virtual bool wct2zpb(const pointer& wctdat) {
-                if (!pre_flow()) {
+                pre_flow();
+                if (!m_flow) {
                     return false;
                 }
+
                 zio::Message msg("FLOW");
 
-                if (!wctdat) {
+                if (!wctdat) {  // eos
                     if (m_had_eos) {
-                        m_flow->send_eot(msg);
-                        m_flow->recv_eot(msg, m_timeout);
+                        finalize();
                         return false;
                     }
                     m_had_eos = true;
@@ -48,6 +49,7 @@ namespace WireCell {
                     if (!ok) {
                         zio::Message eot;
                         m_flow->send_eot(eot);
+                        m_flow = nullptr;
                         return false;
                     }
                     return true;
@@ -63,6 +65,7 @@ namespace WireCell {
                 if (!ok) {                  // got eot from remote
                     zio::Message eot;
                     m_flow->send_eot(eot);
+                    m_flow = nullptr;
                     return false;
                 }
                 return true;
@@ -70,7 +73,8 @@ namespace WireCell {
 
             // Use me as a WCT source / ZIO flow injection
             virtual bool pb2wct(pointer& wctdat) {
-                if (!pre_flow()) {
+                pre_flow();
+                if (!m_flow) {
                     return false;
                 }
 
@@ -81,13 +85,20 @@ namespace WireCell {
                 if (!ok) {
                     zio::Message eot;
                     m_flow->send_eot(eot);
+                    m_flow = nullptr;
                     return false;           // timeout, eot or other error
                 }
 
                 const zio::multipart_t& pls = msg.payload();
                 if (!pls.size()) {           // EOS
+                    if (m_had_eos) {         // 2nd
+                        finalize();
+                        return false;
+                    }
+                    m_had_eos = true;
                     return true;
                 }
+                m_had_eos = false;
 
                 PBDATA out;
                 unpack(pls[0], out);
