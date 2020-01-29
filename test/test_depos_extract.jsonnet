@@ -1,6 +1,5 @@
 local wc = import "wirecell.jsonnet";
 local zmq = import "zmq.jsonnet";
-local common = import "test_depos_common.jsonnet";
 
 //local engine = "TbbFlow";
 local engine = "Pgrapher";

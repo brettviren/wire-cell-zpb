@@ -71,7 +71,7 @@ class Writer:
         seq.attrs["origin"] = msg.origin
         seq.attrs["granule"] = msg.granule
         for k,v in fobj.items():
-            if k in ["flow", "direction"]:
+            if k in ["direction"]:
                 continue
             seq.attrs[k] = v
         
@@ -91,6 +91,7 @@ class Writer:
                 raise RuntimeError(err)
             tohdf = getattr(self.tohdf, type_name)
             slot = seq.create_group(str(index))
+            slot.attrs['pbtype'] = type_name
             tohdf(pbobj, slot)
 
 def file_handler(ctx, pipe, filename, addrpat, wargs):
@@ -161,6 +162,7 @@ def file_handler(ctx, pipe, filename, addrpat, wargs):
                 fw = flow_writer[path] = Writer(sg, *wargs)
 
             fw.save(msg)
+                
     return
 
 def client_handler(ctx, pipe, bot, rule_object, writer_addr, broker_addr):
@@ -202,10 +204,10 @@ def client_handler(ctx, pipe, bot, rule_object, writer_addr, broker_addr):
     port.connect(broker_addr)
     port.online(None)
     flow = Flow(port)
-    log.debug (f'client_handler({base_path}) send BOT to {broker_addr}')
+    log.debug (f'writer({base_path}) send BOT to {broker_addr}')
     flow.send_bot(bot)          # this introduces us to the server
     bot = flow.recv_bot()
-    log.debug (f'client_handler({base_path}) got response:\n{bot}')
+    log.debug (f'writer({base_path}) got response:\n{bot}')
     flow.flush_pay()
 
     def push_message(m):
@@ -253,10 +255,8 @@ def client_handler(ctx, pipe, bot, rule_object, writer_addr, broker_addr):
 
             if ftype == 'EOT':
                 flow.send_eot()
-
-            # fixme: we might get fresh BOT, check for it.
-
-            # fixme: how do we exit?
+                break
             continue
     log.debug ('write_handler exiting')
-
+    pipe.signal()
+    

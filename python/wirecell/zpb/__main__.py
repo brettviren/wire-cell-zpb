@@ -140,8 +140,7 @@ def file_server(ruleset, bind, format, name, port, verbosity):
                                 ("inproc://hdfwriter{port}", (pbmod, frompb))),
                                (writer.client_handler,
                                 (bind,))),
-                      ractors=(reader.file_handler,
-                               reader.client_handler))
+                      ractor=(reader.handler,(bind, pbmod, frompb)))
 
     node = Node(name)
     sport = node.port(port, zmq.SERVER)

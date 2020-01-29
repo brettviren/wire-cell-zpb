@@ -1,6 +1,8 @@
 // describes rules for the file-server which match
 // components used in test_depos_extract.jsonnet 
 
+local base_folder = "bar";
+
 [
     {
         rule: |||
@@ -11,7 +13,7 @@
         rw: "r",             // direction is w.r.t. file point of view
         filepat: "{jobname}.hdf",
         grouppat: "{extra}/{stream}",
-        attr: {extra:"foo"},
+        attr: {extra: base_folder},
     },
     {
         rule: |||
@@ -22,6 +24,6 @@
         rw: "w",             // direction is w.r.t. file point of view
         filepat: "{jobname}.hdf",
         grouppat: "{extra}/{stream}",
-        attr: {extra:"bar"}
+        attr: {extra: base_folder}
     },
 ]

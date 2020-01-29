@@ -30,7 +30,7 @@ class Ruleset:
     '''
 
     def __init__(self, ctx, ruleset, 
-                 wactors=(), ractors=()):
+                 wactors=(), ractor=()):
         '''Create a Factory with a ruleset.
 
         Parameters
@@ -43,11 +43,11 @@ class Ruleset:
             A ruleset is a sequence of rule specifications, each of
             which is a dictionary with these attributes:
 
-        wactors : 2-tuple specifing file writing actors 
+        wactors : 2-tuple of 2-tuples specifing file writing actors 
 
             See below.
 
-        ractors : 2-tuple specifying file reading actors
+        ractor : 2-tuple specifying file reading actors and any args
 
             See below
 
@@ -123,7 +123,7 @@ class Ruleset:
         self.ctx = ctx
         self.ruleset = ruleset
         self.wactors = wash(wactors)
-        self.ractors = wash(ractors)
+        self.ractor = ractor
         self.writers = dict()
         self.handlers = list()
         return
@@ -158,7 +158,16 @@ class Ruleset:
             continue
 
     def launch_read(self, filename, bot, rule):
-        raise RuntimeError("reading not yet implemented")
+        # fixme: for now assume file format allows for simultaneous
+        # reading so file and client handlers are merged into one.
+        ractor, rargs = self.ractor
+        log.debug(f'launch_read: {ractor}, {rargs}')
+        actor = ZActor(self.ctx, ractor,
+                       bot, rule, 
+                       filename, *rargs)
+        self.handlers.append(actor)
+        return True
+            
 
     def launch_write(self, filename, bot, rule):
 
