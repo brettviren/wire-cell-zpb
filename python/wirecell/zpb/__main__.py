@@ -126,7 +126,7 @@ def file_server(ruleset, bind, format, name, port, verbosity):
     from .jsonnet import load as jsonnet_load
 
     # for now we only support HDF
-    from .hdf import writer, reader, frompb
+    from .hdf import writer, reader, frompb, topb
     assert(format == "hdf")
 
     log.level = getattr(logging, verbosity.upper(), "INFO")
@@ -140,7 +140,7 @@ def file_server(ruleset, bind, format, name, port, verbosity):
                                 ("inproc://hdfwriter{port}", (pbmod, frompb))),
                                (writer.client_handler,
                                 (bind,))),
-                      ractor=(reader.handler,(bind, pbmod, frompb)))
+                      ractor=(reader.handler,(bind, pbmod, topb)))
 
     node = Node(name)
     sport = node.port(port, zmq.SERVER)
@@ -152,11 +152,16 @@ def file_server(ruleset, bind, format, name, port, verbosity):
 
     log.info(f'broker {name} entering loop')
     while True:
-        ok = broker.poll(10000)
-        if ok is None:
+        try:
+            broker.poll(10000)
+        except TimeoutError:
             node.peer.drain()
             log.debug(f'broker {name} is lonely')
             log.debug(node.peer.peers)
+        except Exception as e:
+            log.critical(e)
+            raise
+            break
 
     broker.stop()
 

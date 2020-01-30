@@ -59,6 +59,7 @@ class Writer:
         self.tohdf = tohdfmod
 
     def save(self, msg):
+        log.debug(f'save: {msg}')
         fobj = objectify(msg)
         gn = str(msg.seqno)
         seq = self.group.get(gn, None)
@@ -234,29 +235,22 @@ def client_handler(ctx, pipe, bot, rule_object, writer_addr, broker_addr):
 
             # o.w. we have flow
 
-            msg = flow.get()
+            try:
+                msg = flow.get()
+            except Exception as err:
+                log.warning('flow.get error: %s %s' % (type(err),err))
+                continue
+
             if not msg:
-                log.debug("write_handler: flow stalled")
+                log.debug("write_handler: got EOT")
                 flow.send_eot()
                 # fixme: send an EOT also to push socket?.
                 break
 
-            if msg.form != 'FLOW':
-                continue
-
-            fobj = objectify(msg)
-            ftype = fobj.get("flow", None)
-            if not ftype:
-                continue
-
-            # fixme: maybe add some to fobj here and repack
-
             push_message(msg)
 
-            if ftype == 'EOT':
-                flow.send_eot()
-                break
             continue
+
     log.debug ('write_handler exiting')
     pipe.signal()
     

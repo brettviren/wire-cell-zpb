@@ -10,6 +10,7 @@ from zmq import CLIENT
 from ..util import message_to_dict
 from zio import Port, Message
 from zio.flow import Flow
+from google.protobuf.any_pb2 import Any 
 
 import logging
 log = logging.getLogger("zpb")
@@ -44,17 +45,15 @@ class Reader:
         for k,v in attrs.items():
             if type(v) == numpy.int64:
                 attrs[k] = int(v)
-        log.debug(f'remaining attrs: {attrs}')
-        log.debug('credit is %s %d' % (type(attrs['credit']), attrs['credit']))
         msg.label = json.dumps(attrs)
 
         payload = list()
-        for ind, slot in seq:
-            tn = slto.attrs['pbtype']
+        for ind,slot in sorted(seq.items()):
+            tn = slot.attrs['pbtype']
             type_name = tn.rsplit('.',1)[-1]
 
             topb = getattr(self.topb, type_name)
-            pbojb = topb(slot, pbmod)
+            pbojb = topb(slot, self.pbmod)
 
             a = Any()
             a.Pack(pbojb)
@@ -101,8 +100,12 @@ def handler(ctx, pipe, bot, rule_object, filename, broker_addr, *rargs):
 
     while True:
         msg = fr.read()
+        log.debug(f'reader: {msg}')
         if not msg:
             break
         ok = flow.put(msg)
         if not ok:
             break;
+    flow.send_eot()
+    flow.recv_eot()
+    
