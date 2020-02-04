@@ -88,8 +88,7 @@ def test_pbhdf():
                       label=json.dumps({'stream':'frames'}),
                       payload=[a.SerializeToString()])
     msg.seqno = 43
-    writer.save(msg)
-     
+    writer.save(msg)     
 
     # 
     # Do it again with an accidentally rectangular frame

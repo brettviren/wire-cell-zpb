@@ -39,6 +39,7 @@ def test_depo():
 def test_sparse_frame():
     'Test sparse frame conversion'
 
+    t1 = time.time()
     frame1 = pb.Frame(ident=2, time=time.time(), tick=500.0)
     chanset = list(range(1000))
     negs = frame1.tagged_traces["negs"].elements
@@ -53,8 +54,7 @@ def test_sparse_frame():
             tbin -= 1
         samples = numpy.random.normal(size=nticks)
         tr = pb.Trace(channel=chan, tbin=tbin)
-        for s in samples:
-            tr.samples.elements.append(s)
+        tr.samples.elements[:] = samples
         frame1.traces.append(tr)
         tot = numpy.sum(samples)
         if tot < 0:
@@ -63,19 +63,82 @@ def test_sparse_frame():
             brl = frame1.channel_masks["bad"].bin_range_lists[chan]
             brl.beg.append(tbin)
             brl.end.append(tbin+nticks)
-
     if len(negs) > 0:
         frame1.frame_tags.append("negged")
+    t2 = time.time()
+    print("frame build time: %f" %(t2-t1))
 
     tmpdir = tempfile.mkdtemp()
     hdf = h5py.File(os.path.join(tmpdir, "test_frame.hdf"), 'w')
     frompb.Frame(frame1, hdf)
-    frame2 = topb.Frame(hdf, pb)
+    t3 = time.time()
+    print("frame write time: %f" % (t3-t2))
 
+    frame2 = topb.Frame(hdf, pb)
+    t4 = time.time()
+    print("frame read time: %f" % (t4-t3))
+    assert_same_frames(frame1, frame2)
     shutil.rmtree(tmpdir)
 
+def test_dense_frame():
+    'Test dense frame conversion'
+
+    t1 = time.time()
+    frame1 = pb.Frame(ident=2, time=time.time(), tick=500.0)
+    chanset = list(range(1000))
+    negs = frame1.tagged_traces["negs"].elements
+    negs_tot = frame1.trace_summaries["negs"].elements
+    for ind in range(500):
+        chan = ind
+        chanset.remove(chan)
+        tbin = 0
+        nticks = 1000
+        samples = numpy.random.normal(size=nticks)
+        tr = pb.Trace(channel=chan, tbin=tbin)
+        tr.samples.elements[:] = samples
+        frame1.traces.append(tr)
+        tot = numpy.sum(samples)
+        if tot < 0:
+            negs.append(ind)
+            negs_tot.append(tot)
+            brl = frame1.channel_masks["bad"].bin_range_lists[chan]
+            brl.beg.append(tbin)
+            brl.end.append(tbin+nticks)
+    if len(negs) > 0:
+        frame1.frame_tags.append("negged")
+    t2 = time.time()
+    print("frame build time: %f" %(t2-t1))
+
+    tmpdir = tempfile.mkdtemp()
+    hdf = h5py.File(os.path.join(tmpdir, "test_frame.hdf"), 'w')
+    frompb.Frame(frame1, hdf)
+    t3 = time.time()
+    print("frame write time: %f" % (t3-t2))
+
+    frame2 = topb.Frame(hdf, pb)
+    t4 = time.time()
+    print("frame read time: %f" % (t4-t3))
+    assert_same_frames(frame1, frame2)
+    shutil.rmtree(tmpdir)
+
+def assert_same_frames(f1, f2):
+    for field in "ident time tick".split():
+        assert(getattr(f1, field) == getattr(f2, field))
+    for t1,t2 in zip(f1.traces, f2.traces):
+        assert(t1.channel == t2.channel)
+        assert(t1.tbin    == t2.tbin)
+        assert(len(t1.samples.elements) == len(t2.samples.elements))
+        for s1,s2 in zip(t1.samples.elements, t2.samples.elements):
+            assert(s1 == s2)
+    for ft1,ft2 in zip(f1.frame_tags, f2.frame_tags):
+        assert (ft1 == ft2)
+    assert(len(f1.tagged_traces) == len(f2.tagged_traces))
+    assert(len(f1.trace_summaries) == len(f2.trace_summaries))
+
+
 if '__main__' == __name__:
-    #test_depo()
+    test_depo()
     test_sparse_frame()
+    test_dense_frame()
     
     

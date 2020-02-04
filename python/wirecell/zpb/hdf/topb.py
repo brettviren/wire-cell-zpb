@@ -43,11 +43,13 @@ def Frame(group, pbmod):
 
     tgrp = group.get("tagged")
     for tag in tgrp:
-        frame.tagged_traces[tag].elements.extend(tgrp.get(tag))
+        hdind = numpy.asarray(tgrp.get(tag))
+        frame.tagged_traces[tag].elements[:] = hdind
 
     sgrp = group.get("summaries")
     for tag in sgrp:
-        frame.trace_summaries[tag].elements.extend(sgrp.get(tag))
+        hdsum = numpy.asarray(sgrp.get(tag))
+        frame.trace_summaries[tag].elements[:] = hdsum
 
     cgrp = group.get("cmm")
     for tag in cgrp:
@@ -59,21 +61,20 @@ def Frame(group, pbmod):
             rl.end.append(end)
 
     if "samples" in group:      # dense
-        print ("dense traces")
         chans = group["chans"]
         block = group["samples"]
         tbin = block.attrs["tbin"]
         for ind, channel in enumerate(chans):
-            trace = pbmod.Trace(channel = channel, tbin = tbin)
-            trace.samples.elements.extend(block[ind])
+            trace = pbmod.Trace(channel = int(channel), tbin = int(tbin))
+            hdtr = numpy.asarray(block[ind])
+            trace.samples.elements[:] = hdtr
             frame.traces.append(trace)
     if "traces" in group:       # sparse
-        print ("sparse traces")
         chans = group["chans"]
         tbins = group["tbins"]
         tg = group["traces"]
         for ind, channel in enumerate(chans):
-            trace = pbmod.Trace(channel = channel, tbin = tbins[ind])
+            trace = pbmod.Trace(channel = int(channel), tbin = int(tbins[ind]))
             # without numpy this get is slow
             hdtr = numpy.asarray(tg.get(str(ind)))
             trace.samples.elements[:] = hdtr
