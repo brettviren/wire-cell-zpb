@@ -147,15 +147,22 @@ Run file server
   $ wirecell-zpb file-server \
      -n zpbfiles -p flow -v debug \
      -b tcp://127.0.0.1:5678 \
-     -r test/test_depos_extract_ruleset.jsonnet
+     -r test/test_depos_ruleset.jsonnet
 #+end_example
 
-and the WCT job:
+and then a WCT job to write
 
 #+begin_example
   $ wire-cell -l stdout -L debug \
       -c test/test_depos_extract.jsonnet
 #+end_example
 
-Note, start order doesn't matter, but there are timeouts that may bite.
+and then test the inverse, even keeping the server running:
+
+#+begin_example
+  $ wire-cell -l stdout -L debug \
+      -c test/test_depos_inject.jsonnet
+#+end_example
+
+
 
