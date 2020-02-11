@@ -46,6 +46,6 @@ def configure(cfg):
 def build(bld):
     bld.load('wcb')
     bld.smplpkg('WireCellZpb',
-                use='WCT ZIO PROTOBUF EIGEN JSONCPP',
+                use='WCT ZIO ZMQ PROTOBUF EIGEN JSONCPP',
                 test_use='TBB')
 

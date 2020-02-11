@@ -1,5 +1,5 @@
 #include "WireCellZpb/DataImps.h"
-
+#include <google/protobuf/repeated_field.h>
 using namespace WireCell;
 
 Zpb::Depo::Depo(const wctzpb::Depo& depo, IDepo::pointer prior)
@@ -24,9 +24,10 @@ Zpb::Trace::Trace(const wctzpb::Trace& trace)
 {
     auto& q = charge();
     const int nsamples = q.size();
-    const auto& pbq = trace.samples().elements();
+    const auto& samples = trace.samples();
     for (int ind=0; ind<nsamples; ++ind) {
-        q[ind] = pbq[ind];
+        const float qq = samples.elements(ind);
+        q[ind] = qq;
     }
 }
 
@@ -51,10 +52,9 @@ Waveform::ChannelMaskMap make_cmm(const wctzpb::Frame& pbframe)
             Waveform::BinRangeList brl;   // vector<pair<int,int>>
             const auto& pbbrl = ch_brl.second;
             int nbr = pbbrl.beg_size();
-            const auto& beg = pbbrl.beg();
-            const auto& end = pbbrl.end();
             for (int ind=0; ind<nbr; ++ind) {
-                brl.push_back(Waveform::BinRange(beg[ind], end[ind]));
+                brl.push_back(Waveform::BinRange(pbbrl.beg(ind),
+                                                 pbbrl.end(ind)));
             }
             cm[ch_brl.first] = brl;
         }
