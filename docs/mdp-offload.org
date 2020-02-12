@@ -1,0 +1,156 @@
+#+title: ZDP Task Offloading
+
+This describes a mechanism provided by ZPB for "offloading" WCT tasks
+to other processes, possibly on other computers, than the main WCT
+job.
+
+* Motivation
+
+Currently, WCT jobs are highly CPU-bound, but may reasonably utilize
+dozens of threads.  Still, some algorithms are intensive enough to add
+substantially to the overall job time.  Happily, portions of these
+algorithms can be accelerated by running on a GPU.  An example is DNN
+ROI inference which takes 24s on CPU but 200ms on GPU.
+
+Practically, it is seen that a limited number of concurrent GPU access
+methods (pytorch/libtorch) can be used before reaching the GPU memory
+limitations.  WCT can provide a limit by reducing the number of
+threads TBB applies to WCT graph execution.  On hardware resources
+where a small number of cores are used and the GPU may be monopolized
+(eg, personal workstations) this may be an acceptable restriction
+mechanism.  The benefit is that "normal" WCT jobs may be run.
+
+In current tests with one component monopolizing the GPU it is seen
+that the GPU is essentially idle.  The rest of the WCT job is not
+capable to supply data fast enough to keep the GPU busy.
+Extrapolation from single-task estimates for the DNN ROI inference
+component imply that each application of the inference uses on order
+1% of the GPU, averaged over multiple calls.
+
+A single PDSP job applying inference to all APAs is expected to bring
+up the GPU utilization to order 10%.  Thus about ten independently
+running instances of such jobs would be needed to saturate the GPU
+processing.  A single job may engage 10s of cores and so the ensemble
+may require 100s of cores to saturate the GPU.
+
+The offloading mechanism described below addresses both problems
+(avoid GPU memory exhaustion and allow scaling).  It's fundamental
+purpose is to provide a task queue which can elastically scale to more
+clients and workers and including allowing workers running on multiple
+computers.
+
+As it is developed and tested, it is expected that queue latency and
+data transfer and other throughput bottlenecks may alter the simple
+scaling estimations given above.
+
+* High level design of the task queue 
+
+The individual parts and their connections are diagrammed and
+discussed in the following subsections.
+
+[[file:mdp-offload-diagram.svg]]
+
+** Service broker
+
+The core of the ZPB task queue uses the Majordomo protocol from the
+ZeroMQ community.  It provides a service-oriented broker bringing
+clients and workers together.  Workers connect and declare a service
+they provide.  Clients connect with a service request.  The broker
+marshals requests and replies between pairs.
+
+** Adapter
+
+As shown in the above diagram an "adapter" is placed between client
+and broker.  A few  reasons motivate its existence:
+
+1. Majordomo protocol requires clients and workers to use DEALER.
+2. A DEALER socket is not safe to use from more than one thread.
+3. WCT components may execute from a TBB thread pool and thus on multiple threads (although typically, only one at any given time).
+4. CLIENT socket is thread safe.
+
+Thus, a choice exists to adapt to Majordomo protocol or to
+re-implement it in terms of SERVER/CLIENT.  Balancing the effort to
+properly re-implement vs adapt, the latter is chosen.
+
+The job of the adapter is to handle the slight difference in socket
+handling semantics between ZIO CLIENT the MDP client API.  In addition
+to the message payload itself, there are two main pieces of
+information that it must handle.
+
+A message received from a SERVER has an associated routing ID which
+must be supplied when a message is sent via a SERVER if it is to reach
+the original CLIENT.  The adapter has no way to associate replies from
+MDP without them providing this routing ID.  Thus, the adapter must
+encode the routing ID into the message sent to MDP and workers must
+contract to retain this ID in replies.
+
+A client must have some way to specify the name of the service being
+requested.  The MDP client API provides this via a method argument.
+Here, it must be provided in some way along with the ZIO message.
+CLIENT/SERVER messages must be single part (as seen by ZeroMQ).  This
+leaves the ZIO message itself to hold the service.
+
+Thus, the adapter must work in this manner, described following the
+information flow:
+
+1. The SERVER socket is polled.
+2. A ZeroMQ message is received on SERVER.
+3. The routing ID is retrieved from the ZeroMQ message.
+4. The ZeroMQ message is decoded into a ~zio::Message~.
+5. The ~label~ field string in the message header is parsed as JSON.
+6. The ~zpb-service~ attribute of the resulting JSON object is accessed to supply the requested service and removed.
+7. The ~zpb-routing-id~ attribute is added to the object to hold the routing ID.
+8. The ~label~ field of the ~zio::Message~ is set to the new object serialized to JSON text.
+9. The ~zio::Message~ is converted to a multi-part ZeroMQ message (~zmsg_t~) and along with the service name sent as a request to the MDP client API.
+
+The reply is handled as:
+
+1. The MDP client API ~msgpipe~ socket is also polled.
+2. A ZeroMQ messages is received on ~msgpipe~ via the MDP client message API.
+3. The "body" (sub) message is retrieved and converted from parts to a ~zio::Message~.
+4. The ~label~ is parsed as JSON text to retrieve and remove the ~zpb-routing-id~ attribute and the resulting object is serialized and placed back to ~label~.
+5. The ~zio::Message~ is encoded to a single-part ZeroMQ message and sent with the routing ID via the SERVER 
+
+* Job and ensemble aggregation
+
+Edges involving sockets may be implemented in with and supported
+ZeroMQ transport ~inproc://~ inter-thread, ~ipc://~ inter-process or
+~tcp://~ inter-computer (TPC/IP network).  The implementations of the
+boxes in the above diagram are as components allowing flexibility in
+terms of which processes contain them.  The diagram could represent a
+single process or many processes spread over many computers.
+
+** Object vs pointer
+
+In the special case that ~inproc://~ transport is used, the message may
+safely contain pointers to (constant) shared memory.  Thus full
+serialization and transport of the object data is not required.  In
+general, this requires to versions of the components to be created, or
+one version with a configurable switch between the two message types.  
+
+If any component in the ensemble requires other than ~inproc://~
+transport then either all components must pass-by-object or a
+pointer-object converter component must be inserted.
+
+** Languages 
+
+If other than ~inproc://~ transport is used between any two components,
+then these components need not be implemented in the same programming
+language.  As example, a component that provides access to GPU
+resources may be implemented in Python while the rest implemented in
+C++.
+
+** Multiplicity of workers
+
+Multiple workers may register with the Majordomo broker for the same
+service.  They will be applied on a least-recently-used basis.  If a
+single worker is not able to exhaust a resource, eg GPU, additional
+instances can be started until some resource limit is reached.  
+
+In some cases (eg, PyTorch) there is a large resource overhead for
+each individual process access the resource (eg, GPU).  The task queue
+allows for multiple workers to be supplied by threads in a single
+process.  This of course assumes that the resource can be utilized in
+a thread-safe manner.
+
+
